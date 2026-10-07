@@ -1,0 +1,196 @@
+{
+  "name": "orchestrator-connector-studio",
+  "displayName": "Orchestrator Connector",
+  "description": "Switch UiPath Studio / Robot between Orchestrator tenants using saved presets (machine client ID + secret).",
+  "version": "0.1.0",
+  "publisher": "sorenbcoding",
+  "license": "MIT",
+  "author": "Søren Schytz Birk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sorenbcoding/OrchestratorConnector-Studio"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "os": [
+    "win32"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "uipath",
+    "orchestrator",
+    "studio",
+    "tenant",
+    "robot"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "orchestratorConnector",
+          "title": "Orchestrator Connector",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "orchestratorConnector": [
+        {
+          "id": "orchestratorConnector.presets",
+          "name": "Tenant Presets"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "orchestratorConnector.presets",
+        "contents": "No presets yet. A preset stores an Orchestrator URL and a machine client ID/secret.\n[Add Preset](command:orchestratorConnector.addPreset)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "orchestratorConnector.addPreset",
+        "title": "Add Preset",
+        "category": "Orchestrator Connector",
+        "icon": "$(add)"
+      },
+      {
+        "command": "orchestratorConnector.refresh",
+        "title": "Refresh",
+        "category": "Orchestrator Connector",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "orchestratorConnector.connect",
+        "title": "Connect",
+        "category": "Orchestrator Connector",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "orchestratorConnector.editPreset",
+        "title": "Edit Preset",
+        "category": "Orchestrator Connector",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "orchestratorConnector.deletePreset",
+        "title": "Delete Preset",
+        "category": "Orchestrator Connector",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "orchestratorConnector.testPreset",
+        "title": "Test Credentials",
+        "category": "Orchestrator Connector",
+        "icon": "$(check)"
+      },
+      {
+        "command": "orchestratorConnector.pickPreset",
+        "title": "Switch Tenant…",
+        "category": "Orchestrator Connector"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "orchestratorConnector.addPreset",
+          "when": "view == orchestratorConnector.presets",
+          "group": "navigation@1"
+        },
+        {
+          "command": "orchestratorConnector.refresh",
+          "when": "view == orchestratorConnector.presets",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "orchestratorConnector.connect",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "inline@1"
+        },
+        {
+          "command": "orchestratorConnector.editPreset",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "inline@2"
+        },
+        {
+          "command": "orchestratorConnector.connect",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "1_main@1"
+        },
+        {
+          "command": "orchestratorConnector.testPreset",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "1_main@2"
+        },
+        {
+          "command": "orchestratorConnector.editPreset",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "orchestratorConnector.deletePreset",
+          "when": "view == orchestratorConnector.presets && viewItem =~ /^preset/",
+          "group": "2_edit@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Orchestrator Connector",
+      "properties": {
+        "orchestratorConnector.uiRobotPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Full path to `UiRobot.exe`. Leave empty to auto-detect.",
+          "scope": "machine"
+        },
+        "orchestratorConnector.restartAssistant": {
+          "type": "boolean",
+          "default": true,
+          "description": "Close UiPath Assistant before switching and start it again afterwards.",
+          "scope": "machine"
+        },
+        "orchestratorConnector.confirmBeforeSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for confirmation before switching tenant."
+        },
+        "orchestratorConnector.validateBeforeSwitch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Request a token with the preset's client credentials before disconnecting, so bad credentials never leave the Robot disconnected."
+        },
+        "orchestratorConnector.uipCliPath": {
+          "type": "string",
+          "default": "uip",
+          "markdownDescription": "Command or full path for the UiPath CLI (`uip`), used when a preset has *Sync uip CLI* enabled.",
+          "scope": "machine"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "npm run typecheck && node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

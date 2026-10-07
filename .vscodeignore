@@ -1,0 +1,9 @@
+**
+!dist/extension.js
+!scripts/switch.ps1
+!scripts/credman.ps1
+!media/**
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
