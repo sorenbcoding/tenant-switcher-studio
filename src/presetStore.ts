@@ -32,7 +32,7 @@ export class PresetStore {
       throw err;
     }
     // System.Text.Json may write a UTF-8 BOM.
-    text = text.replace(/^﻿/, '').trim();
+    text = text.replace(/^\uFEFF/, '').trim();
     if (!text) {
       return [];
     }

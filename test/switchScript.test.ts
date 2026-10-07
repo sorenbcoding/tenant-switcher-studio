@@ -71,7 +71,7 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
     process.env.OC_STUB_LOG = stubLog;
     const r = await runPowerShellFile(path.join(scripts, 'switch.ps1'), ['-Job', jobPath], undefined, 60_000);
     expect(r.code, r.stderr + r.stdout).toBe(0);
-    const status = JSON.parse(fs.readFileSync(job.statusPath, 'utf8').replace(/^﻿/, ''));
+    const status = JSON.parse(fs.readFileSync(job.statusPath, 'utf8').replace(/^\uFEFF/, ''));
     const calls = fs.readFileSync(stubLog, 'utf8').trim().split('\n').map((l) => l.split('\u001f'));
     const log = fs.readFileSync(job.logPath, 'utf8');
     return { status, calls, log };

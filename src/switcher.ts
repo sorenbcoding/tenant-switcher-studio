@@ -305,7 +305,7 @@ export class Switcher {
 
   private async readStatus(): Promise<SwitchStatus | undefined> {
     try {
-      const text = (await fs.promises.readFile(this.statusPath, 'utf8')).replace(/^﻿/, '');
+      const text = (await fs.promises.readFile(this.statusPath, 'utf8')).replace(/^\uFEFF/, '');
       return JSON.parse(text) as SwitchStatus;
     } catch {
       return undefined;

@@ -25,7 +25,7 @@ describe('PresetStore', () => {
     const json = [
       { Id: 'A1B2C3D4-0000-0000-0000-000000000001', PresetName: 'Dev', OrchestratorUrl: 'https://x', ClientId: 'c1' },
     ];
-    fs.writeFileSync(store.presetsPath, '﻿' + JSON.stringify(json));
+    fs.writeFileSync(store.presetsPath, '\uFEFF' + JSON.stringify(json));
     const presets = await store.load();
     expect(presets).toEqual([
       { id: 'a1b2c3d4-0000-0000-0000-000000000001', presetName: 'Dev', orchestratorUrl: 'https://x', clientId: 'c1' },
