@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkOrchestratorUrl, tokenEndpoint, validateCredentials } from '../src/identity';
+import { checkOrchestratorUrl, tenantParts, tokenEndpoint, urlKey, validateCredentials } from '../src/identity';
 
 describe('tokenEndpoint', () => {
   it.each([
@@ -13,6 +13,24 @@ describe('tokenEndpoint', () => {
     ['https://contoso.local/uipath', 'https://contoso.local/uipath/identity/connect/token'],
   ])('%s -> %s', (input, expected) => {
     expect(tokenEndpoint(input)).toBe(expected);
+  });
+});
+
+describe('tenantParts / urlKey', () => {
+  it('extracts authority, org and tenant for cloud and suite URLs', () => {
+    expect(tenantParts('https://cloud.uipath.com/acme/Dev/orchestrator_/')).toEqual({
+      authority: 'https://cloud.uipath.com',
+      organization: 'acme',
+      tenant: 'Dev',
+    });
+    expect(tenantParts('https://orchestrator.contoso.local')).toBeUndefined();
+  });
+
+  it('treats equivalent URLs as the same connection', () => {
+    const k = urlKey('https://cloud.uipath.com/acme/Dev/orchestrator_');
+    expect(urlKey('https://Cloud.UiPath.com/acme/dev/orchestrator_/')).toBe(k);
+    expect(urlKey('https://cloud.uipath.com/acme/Dev')).toBe(k);
+    expect(urlKey('https://cloud.uipath.com/acme/Prod/orchestrator_')).not.toBe(k);
   });
 });
 
