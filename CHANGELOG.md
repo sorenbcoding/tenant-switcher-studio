@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-09
+
+### Changed
+- The preset tree is replaced by a side panel with a preset card for each preset. Each card has **Connect**, edit and delete actions, and long names are truncated.
+- Adding or editing a preset uses one form with all fields, inline validation and a **Test** button, instead of five consecutive input boxes.
+- The activity bar icon is redrawn as filled, rounded switch arrows. Studio fills icon shapes, so the stroked arrow shafts were invisible.
+
+### Fixed
+- The preset list repeated itself under every row in Studio.
+
 ## [0.2.0] - 2026-10-09
 
 ### Added

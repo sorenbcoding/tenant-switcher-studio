@@ -20,25 +20,28 @@ Upgrading from *Orchestrator Connector* 0.1.0: uninstall it first. Your presets 
 ## Quick example
 
 1. Open **Tenant Switcher** in the activity bar.
-2. Select **Add preset…** and enter:
+2. Select **Add preset** and fill in the form:
    - Name: `Acme production`
    - URL: `https://cloud.uipath.com/acme/Production/orchestrator_`
    - The machine's client ID and client secret.
+   - Select **Test** to check the credentials, then **Save**.
 3. Select the tenant name in the status bar. Pick `Acme production`, and confirm.
 4. The Robot reconnects. Studio reloads its extensions, then reports `Connected to 'Acme production'.`
 
 ## Reference
 
-### Panel actions
+### Panel
+The **Tenant Switcher** panel in the activity bar lists your presets. Each preset has its own card:
+
 | Action | Where |
 |---|---|
-| Add a preset | the **Add preset…** row at the top of the list |
-| Connect | the plug icon on a preset, right-click → **Connect**, or the status bar |
-| Edit | the pencil icon or right-click → **Edit preset**. Leave the secret blank to keep the stored one. |
-| Test credentials | right-click → **Test credentials**. It requests a token without touching the Robot. |
-| Delete | right-click → **Delete preset**. The stored secret is removed too. |
+| Add a preset | **Add preset** at the top of the panel opens a form with all fields |
+| Connect | **Connect** on a preset card, or the tenant name in the status bar |
+| Edit | the pencil icon on a card. Leave the client secret blank to keep the stored one. |
+| Test credentials | **Test** in the form. It requests a token with the values entered, without touching the Robot. |
+| Delete | the bin icon on a card. The stored secret is removed too. |
 
-The connected preset shows a green check. Hover over a preset to see its URL and client ID.
+The connected preset has a violet border and a green **Connected** label. Hover over a card to see the full URL and client ID.
 
 ### What a switch does
 1. Checks the credentials: it requests a `client_credentials` token from the tenant's Identity Server. If the credentials are rejected, nothing changes.
