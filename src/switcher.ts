@@ -97,7 +97,7 @@ export class Switcher {
   async testCredentials(preset: Preset): Promise<void> {
     const secret = await this.creds.read(preset.id);
     if (!secret) {
-      void vscode.window.showErrorMessage(`No client secret stored for "${preset.presetName}". Edit the preset and enter it.`);
+      this.showMissingSecret(preset);
       return;
     }
     const result = await vscode.window.withProgress(
@@ -105,7 +105,7 @@ export class Switcher {
       () => validateCredentials(preset.orchestratorUrl, preset.clientId, secret),
     );
     if (result.status === 'ok') {
-      void vscode.window.showInformationMessage(`"${preset.presetName}": credentials accepted by Identity Server.`);
+      void vscode.window.showInformationMessage(`"${preset.presetName}": Identity Server accepted the client ID and secret.`);
     } else {
       void vscode.window.showWarningMessage(`"${preset.presetName}": ${result.message}`);
     }
@@ -113,15 +113,17 @@ export class Switcher {
 
   async switchTo(preset: Preset): Promise<void> {
     if (this.polling || (await this.readStatus())?.state === 'running') {
-      void vscode.window.showWarningMessage('A tenant switch is already in progress.');
+      void vscode.window.showWarningMessage('A tenant switch is already running. Wait for it to finish, then switch again.');
       return;
     }
     const config = vscode.workspace.getConfiguration('tenantSwitcher');
 
     const uiRobot = findUiRobot(config.get<string>('uiRobotPath') || undefined);
     if (!uiRobot) {
-      const open = 'Open Settings';
-      if ((await vscode.window.showErrorMessage('UiRobot.exe was not found on this machine.', open)) === open) {
+      const open = 'Open settings';
+      const message =
+        'UiRobot.exe was not found — no UiPath Robot install in the default locations. Set tenantSwitcher.uiRobotPath to the full path of UiRobot.exe.';
+      if ((await vscode.window.showErrorMessage(message, open)) === open) {
         void vscode.commands.executeCommand('workbench.action.openSettings', 'tenantSwitcher.uiRobotPath');
       }
       return;
@@ -129,7 +131,7 @@ export class Switcher {
 
     const secret = await this.creds.read(preset.id);
     if (!secret) {
-      void vscode.window.showErrorMessage(`No client secret stored for "${preset.presetName}". Edit the preset and enter it.`);
+      this.showMissingSecret(preset);
       return;
     }
 
@@ -140,13 +142,13 @@ export class Switcher {
         () => validateCredentials(preset.orchestratorUrl, preset.clientId, secret),
       );
       if (result.status === 'rejected') {
-        void vscode.window.showErrorMessage(`Not switching: ${result.message}`);
+        void vscode.window.showErrorMessage(`The switch to "${preset.presetName}" was not started. ${result.message}`);
         return;
       }
       if (result.status === 'unknown') {
-        const go = 'Switch Anyway';
+        const go = 'Switch anyway';
         const answer = await vscode.window.showWarningMessage(
-          `Couldn't verify the credentials for "${preset.presetName}".`,
+          `Could not verify the credentials for "${preset.presetName}".`,
           { modal: true, detail: result.message },
           go,
         );
@@ -204,7 +206,9 @@ export class Switcher {
       await this.launchRunner();
     } catch (err) {
       this.log.error(`Could not start the switch runner: ${(err as Error).message}`);
-      void vscode.window.showErrorMessage(`Could not start the tenant switch: ${(err as Error).message}`);
+      void vscode.window.showErrorMessage(
+        `Could not start the tenant switch — ${(err as Error).message}. Check that PowerShell can run on this machine, then switch again.`,
+      );
       return;
     }
     await this.followProgress(job.jobId, preset.presetName);
@@ -254,7 +258,9 @@ export class Switcher {
       if (final) {
         await this.report(final);
       } else {
-        void vscode.window.showWarningMessage(`The switch to "${name}" did not finish within 5 minutes. See ${this.logPath}.`);
+        void vscode.window.showWarningMessage(
+          `The switch to "${name}" did not finish within 5 minutes — the switch runner may have stopped. See ${this.logPath} for the last completed step.`,
+        );
       }
     } finally {
       this.polling = false;
@@ -288,7 +294,7 @@ export class Switcher {
     }
     this.changed.fire();
 
-    const showLog = 'Show Log';
+    const showLog = 'Show log';
     const warnings = steps.filter((s) => s.outcome === 'warning');
     const pick = status.success
       ? warnings.length
@@ -297,10 +303,16 @@ export class Switcher {
             showLog,
           )
         : await vscode.window.showInformationMessage(status.message, showLog)
-      : await vscode.window.showErrorMessage(`Tenant switch failed. ${status.message}`, showLog);
+      : await vscode.window.showErrorMessage(`The switch to "${status.targetName}" failed — ${status.message}`, showLog);
     if (pick === showLog) {
       this.log.show(true);
     }
+  }
+
+  private showMissingSecret(preset: Preset): void {
+    void vscode.window.showErrorMessage(
+      `No client secret is stored for "${preset.presetName}" — it is missing from Windows Credential Manager. Edit the preset and enter the client secret.`,
+    );
   }
 
   private async readStatus(): Promise<SwitchStatus | undefined> {

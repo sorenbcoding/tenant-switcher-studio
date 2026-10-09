@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await fn(arg);
       } catch (err) {
         log.error((err as Error).stack ?? String(err));
-        void vscode.window.showErrorMessage(`Tenant Switcher: ${(err as Error).message}`);
+        void vscode.window.showErrorMessage(`Tenant Switcher command failed — ${(err as Error).message}. See the Tenant Switcher output for details.`);
       }
     };
 
@@ -59,7 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const saved = await editPresetForm(store, creds);
     if (saved) {
       refresh();
-      const connect = 'Connect Now';
+      const connect = 'Connect now';
       if ((await vscode.window.showInformationMessage(`Preset "${saved.presetName}" saved.`, connect)) === connect) {
         await switcher.switchTo(saved);
       }

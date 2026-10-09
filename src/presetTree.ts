@@ -69,7 +69,9 @@ export class PresetTreeProvider implements vscode.TreeDataProvider<Row> {
       );
     } catch (err) {
       this.log.error(`Could not load presets from ${this.store.presetsPath}: ${(err as Error).message}`);
-      void vscode.window.showErrorMessage(`Could not load presets: ${(err as Error).message}`);
+      void vscode.window.showErrorMessage(
+        `Could not load presets — ${this.store.presetsPath} is not valid JSON (${(err as Error).message}). Fix or remove the file; the list reloads when it changes.`,
+      );
       return [];
     }
   }

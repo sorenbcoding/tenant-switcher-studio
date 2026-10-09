@@ -18,7 +18,7 @@ export async function editPresetForm(store: PresetStore, creds: CredentialStore,
     prompt: 'Preset name',
     value: existing?.presetName ?? '',
     ignoreFocusOut: true,
-    validateInput: (v) => (v.trim() ? undefined : 'A name is required.'),
+    validateInput: (v) => (v.trim() ? undefined : 'Enter a preset name.'),
   });
   if (presetName === undefined) {
     return undefined;
@@ -28,7 +28,11 @@ export async function editPresetForm(store: PresetStore, creds: CredentialStore,
   );
   if (clash) {
     const overwrite = 'Overwrite';
-    const answer = await vscode.window.showWarningMessage(`A preset named "${clash.presetName}" already exists.`, { modal: true }, overwrite);
+    const answer = await vscode.window.showWarningMessage(
+      `A preset named "${clash.presetName}" already exists.`,
+      { modal: true, detail: 'Saving replaces its URL, client ID and secret.' },
+      overwrite,
+    );
     if (answer !== overwrite) {
       return undefined;
     }
@@ -51,7 +55,7 @@ export async function editPresetForm(store: PresetStore, creds: CredentialStore,
     prompt: 'Machine client ID (from the machine template in Orchestrator)',
     value: existing?.clientId ?? '',
     ignoreFocusOut: true,
-    validateInput: (v) => (v.trim() ? undefined : 'A client ID is required.'),
+    validateInput: (v) => (v.trim() ? undefined : 'Enter the machine client ID.'),
   });
   if (clientId === undefined) {
     return undefined;
@@ -64,7 +68,7 @@ export async function editPresetForm(store: PresetStore, creds: CredentialStore,
     prompt: hasSecret ? 'Client secret (leave blank to keep the stored secret)' : 'Client secret',
     password: true,
     ignoreFocusOut: true,
-    validateInput: (v) => (v || hasSecret ? undefined : 'A client secret is required.'),
+    validateInput: (v) => (v || hasSecret ? undefined : 'Enter the client secret.'),
   });
   if (secret === undefined) {
     return undefined;

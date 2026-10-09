@@ -77,7 +77,10 @@ export async function validateCredentials(
   try {
     endpoint = tokenEndpoint(orchestratorUrl);
   } catch {
-    return { status: 'rejected', message: `Invalid Orchestrator URL: ${orchestratorUrl}` };
+    return {
+      status: 'rejected',
+      message: `Orchestrator URL "${orchestratorUrl}" could not be parsed — it is not a full URL. Edit the preset and enter the tenant URL.`,
+    };
   }
   if (!fetchImpl) {
     return { status: 'unknown', message: 'fetch is not available in this extension host.' };
@@ -91,7 +94,10 @@ export async function validateCredentials(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
-    return { status: 'unknown', message: `Could not reach ${endpoint}: ${(err as Error).message}` };
+    return {
+      status: 'unknown',
+      message: `Could not reach ${endpoint} — ${(err as Error).message}. Check the network or proxy settings.`,
+    };
   }
   if (res.ok) {
     return { status: 'ok' };
@@ -106,13 +112,19 @@ export async function validateCredentials(
     // non-JSON error page
   }
   if (res.status === 401 || error === 'invalid_client' || error === 'unauthorized_client') {
-    return { status: 'rejected', message: `Identity Server rejected the client ID/secret${description ? `: ${description}` : '.'}` };
+    return {
+      status: 'rejected',
+      message: `Identity Server rejected the client ID or secret — ${description || 'they do not match a machine in this tenant'}. Edit the preset and enter the client ID and secret shown for the machine in Orchestrator.`,
+    };
   }
   if (res.status === 404) {
-    return { status: 'rejected', message: `No token endpoint at ${endpoint} - check the Orchestrator URL.` };
+    return {
+      status: 'rejected',
+      message: `No token endpoint at ${endpoint} — the Orchestrator URL is probably wrong. Edit the preset and check the organization and tenant in the URL.`,
+    };
   }
   return {
     status: 'unknown',
-    message: `Unexpected response from ${endpoint}: HTTP ${res.status}${error ? ` (${error}${description ? `: ${description}` : ''})` : ''}`,
+    message: `Unexpected response from ${endpoint} — HTTP ${res.status}${error ? ` (${error}${description ? `: ${description}` : ''})` : ''}.`,
   };
 }

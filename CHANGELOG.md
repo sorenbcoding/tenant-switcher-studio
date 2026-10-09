@@ -1,10 +1,31 @@
 # Changelog
 
-## 0.1.0 (unreleased)
-- Tenant presets are shared with the Orchestrator Connector desktop app: same `presets.json` and Credential Manager entries.
-- Tree view and status bar switcher for Studio 26.
-- Credentials are checked against Identity Server before the Robot is disconnected.
-- Switching uses the documented `UiRobot connect` syntax and checks exit codes. If the connect fails, the extension reconnects the previous preset.
-- Detects user-mode and service-mode installs. The Robot service is restarted, with elevation, only when it exists.
+All notable changes to Tenant Switcher for UiPath Studio are documented here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [0.2.0] - 2026-10-09
+
+### Added
+- **Add preset…** row at the top of the preset list. Studio does not show view title buttons.
+- Product logo (light/dark SVG, PNG 16–128 px) and a theme-tinted activity bar icon.
+
+### Changed
+- Renamed from *Orchestrator Connector* to *Tenant Switcher for UiPath Studio*.
+  - Extension ID is now `sorenbcoding.sorenb-studio-tenant-switcher`. Uninstall 0.1.0 before installing 0.2.0. Presets and secrets are kept.
+  - Commands, views and settings use the `tenantSwitcher.` prefix instead of `orchestratorConnector.`. Set any changed settings again.
+  - Repository moved to `sorenbcoding/tenant-switcher-studio`.
+- Preset rows show only the name, so the inline Connect and Edit icons stay visible. The URL is in the tooltip.
+- Error messages now state what failed, the likely cause and the next step.
+
+## [0.1.0] - 2026-10-07
+
+### Added
+- Tenant presets shared with the Orchestrator Connector desktop app, using the same `presets.json` and Credential Manager entries.
+- Preset tree view and a status bar tenant switcher for Studio 26.
+- Credential check against Identity Server before the Robot is disconnected.
+- Switch using the documented `UiRobot connect` syntax, with exit-code checks. A failed connect reconnects the previous preset.
+- Detection of user-mode and service-mode installs. The Robot service is restarted, with elevation, only when it exists.
 - Optional per-preset `uip login` sync.
-- The switch runs outside Studio's extension host, so it survives the host restart on tenant change.
+- Switch runner that survives the extension host restart on tenant change.

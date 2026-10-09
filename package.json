@@ -56,13 +56,13 @@
     "viewsWelcome": [
       {
         "view": "tenantSwitcher.presets",
-        "contents": "No presets yet. A preset stores an Orchestrator URL and a machine client ID/secret.\n[Add Preset](command:tenantSwitcher.addPreset)"
+        "contents": "No presets yet. A preset stores an Orchestrator URL and a machine client ID/secret.\n[Add preset](command:tenantSwitcher.addPreset)"
       }
     ],
     "commands": [
       {
         "command": "tenantSwitcher.addPreset",
-        "title": "Add Preset",
+        "title": "Add preset",
         "category": "Tenant Switcher",
         "icon": "$(add)"
       },
@@ -80,25 +80,25 @@
       },
       {
         "command": "tenantSwitcher.editPreset",
-        "title": "Edit Preset",
+        "title": "Edit preset",
         "category": "Tenant Switcher",
         "icon": "$(edit)"
       },
       {
         "command": "tenantSwitcher.deletePreset",
-        "title": "Delete Preset",
+        "title": "Delete preset",
         "category": "Tenant Switcher",
         "icon": "$(trash)"
       },
       {
         "command": "tenantSwitcher.testPreset",
-        "title": "Test Credentials",
+        "title": "Test credentials",
         "category": "Tenant Switcher",
         "icon": "$(check)"
       },
       {
         "command": "tenantSwitcher.pickPreset",
-        "title": "Switch Tenant…",
+        "title": "Switch tenant…",
         "category": "Tenant Switcher"
       }
     ],

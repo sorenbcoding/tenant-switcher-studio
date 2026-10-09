@@ -90,7 +90,7 @@ function Invoke-Exe([string]$file, [string[]]$arguments, [int]$timeoutSec = 90, 
 
 function Get-Secret($preset) {
   $s = Read-OcSecret $preset.id
-  if ($null -eq $s -or $s -eq '') { throw "No stored client secret for preset '$($preset.name)'." }
+  if ($null -eq $s -or $s -eq '') { throw "No client secret is stored for preset '$($preset.name)'. Edit the preset and enter the client secret." }
   $secrets.Add($s)
   return $s
 }
@@ -136,7 +136,8 @@ try {
     Add-Step 'Connect Robot' 'ok' $spec.target.url
   } else {
     Add-Step 'Connect Robot' 'failed' "exit $($r.code) $($r.output)"
-    $reason = "UiRobot connect failed (exit $($r.code)): $($r.output)"
+    $output = if ($r.output) { $r.output.TrimEnd('.') } else { 'no output' }
+    $reason = "UiRobot connect returned exit code $($r.code) ($output)."
     if ($spec.previous) {
       try {
         $rb = Connect-Robot $spec.previous
@@ -146,15 +147,16 @@ try {
           $reason += " Reconnected to '$($spec.previous.name)'."
         } else {
           Add-Step "Reconnect previous ($($spec.previous.name))" 'failed' "exit $($rb.code) $($rb.output)"
-          $reason += ' Rollback also failed; the Robot is disconnected.'
+          $reason += " Reconnecting to '$($spec.previous.name)' also failed, so the Robot is disconnected."
         }
       } catch {
         Add-Step "Reconnect previous ($($spec.previous.name))" 'failed' $_.Exception.Message
-        $reason += ' Rollback failed; the Robot is disconnected.'
+        $reason += " Reconnecting to '$($spec.previous.name)' also failed, so the Robot is disconnected."
       }
     } else {
-      $reason += ' No previous preset known, so the Robot is now disconnected.'
+      $reason += ' No previously connected preset is known, so the Robot is disconnected.'
     }
+    $reason += ' Check the machine client ID and secret in Orchestrator, then switch again.'
     if ($spec.restartAssistant -and $spec.assistantPath) { Start-Process -FilePath $spec.assistantPath -ErrorAction SilentlyContinue }
     Finish $false $reason
   }
@@ -171,7 +173,7 @@ try {
       } else {
         $p = Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru -WindowStyle Hidden `
           -ArgumentList '-NoProfile -Command "Restart-Service -Name ''UiPath Robot'' -Force"'
-        if ($p.ExitCode -ne 0) { throw "elevated restart exited with $($p.ExitCode)" }
+        if ($p.ExitCode -ne 0) { throw "The elevated service restart returned exit code $($p.ExitCode). Restart the UiPath Robot service manually." }
       }
       Add-Step 'Restart Robot service' 'ok'
     } catch {
@@ -185,7 +187,7 @@ try {
       Start-Process -FilePath $spec.assistantPath
       Add-Step 'Start Assistant' 'ok'
     } else {
-      Add-Step 'Start Assistant' 'warning' 'UiPath.Assistant.exe not found; start it manually'
+      Add-Step 'Start Assistant' 'warning' 'UiPath.Assistant.exe was not found. Start UiPath Assistant manually.'
     }
   }
 
