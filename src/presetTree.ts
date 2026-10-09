@@ -57,7 +57,11 @@ export class PresetTreeProvider implements vscode.TreeDataProvider<Row> {
     return item;
   }
 
-  async getChildren(): Promise<Row[]> {
+  async getChildren(element?: Row): Promise<Row[]> {
+    // Studio asks every row for children, even rows marked as leaves; only the root has any.
+    if (element) {
+      return [];
+    }
     try {
       const presets = await this.store.load();
       const [active, meta] = await Promise.all([this.switcher.activePreset(presets), this.store.loadMeta()]);
