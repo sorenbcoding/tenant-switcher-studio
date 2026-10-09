@@ -41,6 +41,8 @@ The **Tenant Switcher** panel in the activity bar lists your presets. Each prese
 | Test credentials | **Test** in the form. It requests a token with the values entered, without touching the Robot. |
 | Delete | the bin icon on a card. The stored secret is removed too. |
 
+Confirmations appear on the preset card, for example *Do you want to switch tenant to Staging?* with **Switch** and **Cancel**. Switch results appear as a banner at the top of the panel with **Show log** and **OK**. Studio titles every extension message box "Extension", so the panel is used wherever possible. Selecting a tenant from the status bar list counts as the confirmation.
+
 The connected preset has a violet border and a green **Connected** label. Hover over a card to see the full URL and client ID.
 
 ### What a switch does

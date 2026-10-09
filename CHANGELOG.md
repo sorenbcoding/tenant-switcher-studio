@@ -10,6 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 - The preset tree is replaced by a side panel with a preset card for each preset. Each card has **Connect**, edit and delete actions, and long names are truncated.
 - Adding or editing a preset uses one form with all fields, inline validation and a **Test** button, instead of five consecutive input boxes.
+- Confirmations (switch, delete, unverified credentials) and switch results appear in the panel instead of Studio message boxes, which are always titled "Extension". Results have **Show log** and **OK** buttons. When the panel is closed, a message box with **OK** is used instead.
+- While a switch runs, the panel and the status bar show the target tenant and the current step.
 - The activity bar icon is redrawn as filled, rounded switch arrows. Studio fills icon shapes, so the stroked arrow shafts were invisible.
 
 ### Fixed
