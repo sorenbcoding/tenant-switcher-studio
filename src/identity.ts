@@ -39,6 +39,17 @@ export function urlKey(orchestratorUrl: string): string {
   }
 }
 
+/** Compact label such as "cloud.uipath.com/acme/Dev". */
+export function shortUrl(url: string): string {
+  try {
+    const parts = tenantParts(url);
+    const u = new URL(url);
+    return parts ? `${u.host}/${parts.organization}/${parts.tenant}` : u.host + u.pathname.replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
 function isCloudHost(host: string): boolean {
   return /(^|\.)uipath\.(com|us)$/i.test(host);
 }

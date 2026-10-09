@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Preset } from './model';
 import { PresetStore } from './presetStore';
-import { shortUrl } from './presetTree';
+import { shortUrl } from './identity';
 import { Switcher } from './switcher';
 
 export class TenantStatusBar {

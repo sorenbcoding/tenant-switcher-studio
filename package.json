@@ -2,7 +2,7 @@
   "name": "sorenb-studio-tenant-switcher",
   "displayName": "Tenant Switcher for UiPath Studio",
   "description": "Switches the local Studio and Robot between Orchestrator tenants using saved presets with machine client credentials.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "sorenbcoding",
   "license": "MIT",
   "author": "Søren Schytz Birk",
@@ -48,53 +48,17 @@
     "views": {
       "tenantSwitcher": [
         {
-          "id": "tenantSwitcher.presets",
-          "name": "Tenant Presets"
+          "type": "webview",
+          "id": "tenantSwitcher.panel",
+          "name": "Presets"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "tenantSwitcher.presets",
-        "contents": "No presets yet. A preset stores an Orchestrator URL and a machine client ID/secret.\n[Add preset](command:tenantSwitcher.addPreset)"
-      }
-    ],
     "commands": [
       {
         "command": "tenantSwitcher.addPreset",
         "title": "Add preset",
-        "category": "Tenant Switcher",
-        "icon": "$(add)"
-      },
-      {
-        "command": "tenantSwitcher.refresh",
-        "title": "Refresh",
-        "category": "Tenant Switcher",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "tenantSwitcher.connect",
-        "title": "Connect",
-        "category": "Tenant Switcher",
-        "icon": "$(plug)"
-      },
-      {
-        "command": "tenantSwitcher.editPreset",
-        "title": "Edit preset",
-        "category": "Tenant Switcher",
-        "icon": "$(edit)"
-      },
-      {
-        "command": "tenantSwitcher.deletePreset",
-        "title": "Delete preset",
-        "category": "Tenant Switcher",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "tenantSwitcher.testPreset",
-        "title": "Test credentials",
-        "category": "Tenant Switcher",
-        "icon": "$(check)"
+        "category": "Tenant Switcher"
       },
       {
         "command": "tenantSwitcher.pickPreset",
@@ -102,52 +66,6 @@
         "category": "Tenant Switcher"
       }
     ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "tenantSwitcher.addPreset",
-          "when": "view == tenantSwitcher.presets",
-          "group": "navigation@1"
-        },
-        {
-          "command": "tenantSwitcher.refresh",
-          "when": "view == tenantSwitcher.presets",
-          "group": "navigation@2"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "tenantSwitcher.connect",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "inline@1"
-        },
-        {
-          "command": "tenantSwitcher.editPreset",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "inline@2"
-        },
-        {
-          "command": "tenantSwitcher.connect",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "1_main@1"
-        },
-        {
-          "command": "tenantSwitcher.testPreset",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "1_main@2"
-        },
-        {
-          "command": "tenantSwitcher.editPreset",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "2_edit@1"
-        },
-        {
-          "command": "tenantSwitcher.deletePreset",
-          "when": "view == tenantSwitcher.presets && viewItem =~ /^preset/",
-          "group": "2_edit@2"
-        }
-      ]
-    },
     "configuration": {
       "title": "Tenant Switcher",
       "properties": {
