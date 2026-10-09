@@ -15,7 +15,10 @@ type Inbound =
   | { type: 'save'; values: PresetFormValues }
   | { type: 'test'; values: PresetFormValues }
   | { type: 'connect'; id: string }
+  | { type: 'connectAnyway'; id: string }
   | { type: 'delete'; id: string }
+  | { type: 'dismissResult' }
+  | { type: 'openSettings' }
   | { type: 'showLog' };
 
 /** Preset data sent to the webview. Secrets never leave the extension host. */
@@ -85,7 +88,14 @@ export class PresetPanel implements vscode.WebviewViewProvider {
         syncUipCli: !!meta[p.id]?.syncUipCli,
         active: p.id === active?.id,
       }));
-      await this.post({ type: 'state', presets: items, busy: this.switcher.isRunning });
+      await this.post({
+        type: 'state',
+        presets: items,
+        busy: this.switcher.isRunning,
+        progress: this.switcher.progress,
+        result: this.switcher.lastResult,
+        confirmBeforeSwitch: vscode.workspace.getConfiguration('tenantSwitcher').get<boolean>('confirmBeforeSwitch', true),
+      });
     } catch (err) {
       this.log.error(`Could not load presets from ${this.store.presetsPath}: ${(err as Error).message}`);
       await this.post({
@@ -119,15 +129,20 @@ export class PresetPanel implements vscode.WebviewViewProvider {
         case 'test':
           await this.test(msg.values);
           break;
-        case 'connect': {
-          const preset = await this.store.get(msg.id);
-          if (preset) {
-            await this.switcher.switchTo(preset);
-          }
+        case 'connect':
+          await this.connect(msg.id, false);
           break;
-        }
+        case 'connectAnyway':
+          await this.connect(msg.id, true);
+          break;
         case 'delete':
           await this.remove(msg.id);
+          break;
+        case 'dismissResult':
+          await this.switcher.clearLastResult();
+          break;
+        case 'openSettings':
+          await vscode.commands.executeCommand('workbench.action.openSettings', 'tenantSwitcher');
           break;
         case 'showLog':
           this.log.show(true);
@@ -135,8 +150,13 @@ export class PresetPanel implements vscode.WebviewViewProvider {
       }
     } catch (err) {
       this.log.error((err as Error).stack ?? String(err));
-      void vscode.window.showErrorMessage(`Tenant Switcher action failed — ${(err as Error).message}. See the Tenant Switcher output for details.`);
       await this.post({ type: 'formBusy', busy: false });
+      await this.post({ type: 'clearPrompt' });
+      await this.post({
+        type: 'notice',
+        severity: 'error',
+        message: `The action failed — ${(err as Error).message}. See the log for details.`,
+      });
     }
   }
 
@@ -209,24 +229,53 @@ export class PresetPanel implements vscode.WebviewViewProvider {
     });
   }
 
+  /** True once the panel is on screen, waiting up to timeoutMs (e.g. while Studio restores it after a host restart). */
+  async waitUntilVisible(timeoutMs: number): Promise<boolean> {
+    const until = Date.now() + timeoutMs;
+    while (Date.now() < until) {
+      if (this.view?.visible) {
+        return true;
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return !!this.view?.visible;
+  }
+
+  /** Connect flow inside the panel: the webview has already asked for confirmation. */
+  private async connect(id: string, skipChecks: boolean): Promise<void> {
+    const preset = await this.store.get(id);
+    if (!preset) {
+      await this.refresh();
+      return;
+    }
+    if (!skipChecks) {
+      await this.post({ type: 'prompt', id, kind: 'working', message: 'Checking credentials…' });
+      const check = await this.switcher.preflight(preset);
+      if (check.kind === 'blocked') {
+        await this.post({ type: 'clearPrompt' });
+        await this.post({ type: 'notice', severity: 'error', message: check.message, openSettings: !!check.openSettings });
+        return;
+      }
+      if (check.kind === 'unverified') {
+        await this.post({ type: 'prompt', id, kind: 'unverified', message: `Could not verify the credentials. ${check.message}` });
+        return;
+      }
+    }
+    await this.post({ type: 'clearPrompt' });
+    await this.switcher.start(preset);
+  }
+
+  /** The webview has already asked for confirmation. */
   private async remove(id: string): Promise<void> {
     const preset = await this.store.get(id);
     if (!preset) {
       return;
     }
-    const del = 'Delete';
-    const answer = await vscode.window.showWarningMessage(
-      `Delete preset "${preset.presetName}"?`,
-      { modal: true, detail: 'The stored client secret is removed too. The Orchestrator Connector desktop app shares this preset.' },
-      del,
-    );
-    if (answer === del) {
-      await this.creds.delete(preset.id);
-      await this.store.remove(preset.id);
-      this.log.info(`Deleted preset "${preset.presetName}".`);
-      await this.post({ type: 'closeForm' });
-      await this.refresh();
-    }
+    await this.creds.delete(preset.id);
+    await this.store.remove(preset.id);
+    this.log.info(`Deleted preset "${preset.presetName}".`);
+    await this.post({ type: 'closeForm' });
+    await this.refresh();
   }
 
   private async post(message: unknown): Promise<void> {

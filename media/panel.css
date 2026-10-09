@@ -216,3 +216,59 @@ input:focus-visible {
 .notice-error {
   color: var(--vscode-errorForeground);
 }
+
+/* ---- banners (results and notices; replace Studio message boxes, which are always titled "Extension") */
+.banner-area:not(:empty) {
+  margin-bottom: var(--sb-space-3);
+}
+.banner {
+  border: var(--sb-border-width) solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-left-width: 3px;
+  border-radius: var(--sb-radius-md);
+  padding: var(--sb-space-2);
+  margin-bottom: var(--sb-space-2);
+  overflow-wrap: anywhere;
+}
+.banner-info {
+  border-left-color: var(--vscode-testing-iconPassed);
+}
+.banner-warning {
+  border-left-color: var(--vscode-editorWarning-foreground, var(--sb-status-warning));
+}
+.banner-error {
+  border-left-color: var(--vscode-errorForeground);
+}
+.banner-progress {
+  border-left-color: var(--sb-accent-extension);
+}
+.banner-message {
+  margin-bottom: var(--sb-space-1);
+}
+.banner-detail {
+  font-size: var(--sb-text-caption);
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ---- inline prompts on a preset card */
+.prompt {
+  margin-left: 16px;
+  overflow-wrap: anywhere;
+}
+.prompt-question {
+  margin-bottom: var(--sb-space-1);
+}
+.prompt-detail {
+  font-size: var(--sb-text-caption);
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: var(--sb-space-2);
+}
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-2);
+}
+.prompt .action-row {
+  justify-content: flex-start;
+}

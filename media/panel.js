@@ -1,4 +1,5 @@
-// Tenant Switcher side panel. Renders the preset list and the add/edit form.
+// Tenant Switcher side panel: banners, preset cards with inline prompts, and the add/edit form.
+// Studio titles every message box "Extension", so confirmations and results live here instead.
 // User data is only ever assigned through textContent/value, never innerHTML.
 (function () {
   const vscode = acquireVsCodeApi();
@@ -9,14 +10,19 @@
     trash: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M7 7v4M9 7v4"/></svg>',
   };
 
-  /** @type {{presets: any[], busy: boolean, error?: string}} */
-  let state = { presets: [], busy: false };
-  /** @type {null | {mode: 'add'|'edit', values: any, hasSecret: boolean, errors: Record<string,string>, busy: boolean, test?: {ok: boolean, message: string}}} */
+  /** Extension state: presets, running switch, last result and settings. */
+  let state = { presets: [], busy: false, confirmBeforeSwitch: true };
+  /** Add/edit form, or null. */
   let form = null;
+  /** Inline prompt on one card: {id, kind: 'confirm'|'delete'|'working'|'unverified', message?}. */
+  let prompt = null;
+  /** Transient message from the extension: {severity, message, openSettings?}. */
+  let notice = null;
 
+  const bannerArea = el('div', 'banner-area');
   const formArea = el('div', 'form-area');
   const listArea = el('div', 'list-area');
-  app.append(formArea, listArea);
+  app.append(bannerArea, formArea, listArea);
 
   // ---- theme: follow Studio's body class so the brand tokens switch with it
   function syncTheme() {
@@ -32,11 +38,14 @@
     switch (msg.type) {
       case 'state':
         state = msg;
+        if (prompt && !state.presets.some((p) => p.id === prompt.id)) prompt = null;
+        renderBanners();
         renderList();
         if (!form) renderForm();
         break;
       case 'form':
         form = { mode: msg.mode, values: msg.values, hasSecret: msg.hasSecret, errors: {}, busy: false };
+        prompt = null;
         renderForm(true);
         renderList();
         break;
@@ -66,17 +75,65 @@
           renderForm();
         }
         break;
+      case 'prompt':
+        prompt = { id: msg.id, kind: msg.kind, message: msg.message };
+        renderList();
+        break;
+      case 'clearPrompt':
+        prompt = null;
+        renderList();
+        break;
+      case 'notice':
+        notice = { severity: msg.severity, message: msg.message, openSettings: msg.openSettings };
+        renderBanners();
+        break;
     }
   });
+
+  // ---- banners: running switch, last result, transient notice
+  function renderBanners() {
+    bannerArea.replaceChildren();
+    if (state.busy && state.progress) {
+      const b = banner('progress', `Switching to ${state.progress.targetName}`);
+      b.append(text('div', 'banner-detail', state.progress.step ? `${state.progress.step}…` : 'Starting…'));
+      bannerArea.append(b);
+    } else if (state.result) {
+      const b = banner(state.result.severity, state.result.message);
+      b.append(
+        actionRow([
+          button('Show log', 'btn btn-secondary', () => vscode.postMessage({ type: 'showLog' })),
+          button('OK', 'btn btn-primary', () => vscode.postMessage({ type: 'dismissResult' })),
+        ]),
+      );
+      bannerArea.append(b);
+    }
+    if (notice) {
+      const b = banner(notice.severity, notice.message);
+      const buttons = [];
+      if (notice.openSettings) {
+        buttons.push(button('Open settings', 'btn btn-secondary', () => vscode.postMessage({ type: 'openSettings' })));
+      }
+      buttons.push(button('OK', 'btn btn-primary', () => {
+        notice = null;
+        renderBanners();
+      }));
+      b.append(actionRow(buttons));
+      bannerArea.append(b);
+    }
+  }
+
+  function banner(severity, message) {
+    const b = el('div', `banner banner-${severity}`);
+    b.setAttribute('role', severity === 'error' ? 'alert' : 'status');
+    b.append(text('div', 'banner-message', message));
+    return b;
+  }
 
   // ---- list
   function renderList() {
     listArea.replaceChildren();
     if (state.error) {
       listArea.append(text('p', 'notice notice-error', state.error));
-    }
-    if (state.busy) {
-      listArea.append(text('p', 'notice', 'Switching tenant. Progress is shown in the notification.'));
     }
     if (!state.presets.length && !form && !state.error) {
       listArea.append(
@@ -93,26 +150,90 @@
     root.title = `${p.url}\nClient ID: ${p.clientId}${p.syncUipCli ? '\nAlso signs in the uip CLI' : ''}`;
 
     const head = el('div', 'card-head');
-    const dot = el('span', p.active ? 'dot dot-active' : 'dot');
-    const name = text('span', 'card-name', p.name || '(unnamed)');
-    head.append(dot, name);
+    head.append(el('span', p.active ? 'dot dot-active' : 'dot'), text('span', 'card-name', p.name || '(unnamed)'));
     if (p.active) head.append(text('span', 'badge', 'Connected'));
+    root.append(head, text('div', 'card-url', p.shortUrl));
 
-    const url = text('div', 'card-url', p.shortUrl);
+    if (prompt && prompt.id === p.id) {
+      root.append(cardPrompt(p));
+      return root;
+    }
 
     const actions = el('div', 'card-actions');
     if (!p.active) {
-      const connect = button('Connect', 'btn btn-secondary', () => vscode.postMessage({ type: 'connect', id: p.id }));
+      const connect = button('Connect', 'btn btn-secondary', () => onConnect(p));
       connect.disabled = state.busy;
       actions.append(connect);
     }
-    const spacer = el('span', 'spacer');
-    const edit = iconButton('edit', `Edit ${p.name}`, () => vscode.postMessage({ type: 'edit', id: p.id }));
-    const del = iconButton('trash', `Delete ${p.name}`, () => vscode.postMessage({ type: 'delete', id: p.id }));
-    actions.append(spacer, edit, del);
-
-    root.append(head, url, actions);
+    actions.append(
+      el('span', 'spacer'),
+      iconButton('edit', `Edit ${p.name}`, () => vscode.postMessage({ type: 'edit', id: p.id })),
+      iconButton('trash', `Delete ${p.name}`, () => setPrompt({ id: p.id, kind: 'delete' })),
+    );
+    root.append(actions);
     return root;
+  }
+
+  function onConnect(p) {
+    notice = null;
+    renderBanners();
+    if (state.confirmBeforeSwitch) {
+      setPrompt({ id: p.id, kind: 'confirm' });
+    } else {
+      vscode.postMessage({ type: 'connect', id: p.id });
+    }
+  }
+
+  function cardPrompt(p) {
+    const box = el('div', 'prompt');
+    const cancel = () => button('Cancel', 'btn btn-secondary', () => setPrompt(null));
+    switch (prompt.kind) {
+      case 'confirm':
+        box.append(
+          text('div', 'prompt-question', `Do you want to switch tenant to ${p.name}?`),
+          text('div', 'prompt-detail', 'The Robot disconnects from the current tenant and connects to this one.'),
+          actionRow([
+            button('Switch', 'btn btn-primary', () => vscode.postMessage({ type: 'connect', id: p.id })),
+            cancel(),
+          ]),
+        );
+        break;
+      case 'delete':
+        box.append(
+          text('div', 'prompt-question', `Do you want to delete ${p.name}?`),
+          text('div', 'prompt-detail', 'The stored client secret is removed too. The Orchestrator Connector desktop app shares this preset.'),
+          actionRow([
+            button('Delete', 'btn btn-primary', () => {
+              setPrompt(null);
+              vscode.postMessage({ type: 'delete', id: p.id });
+            }),
+            cancel(),
+          ]),
+        );
+        break;
+      case 'working':
+        box.append(text('div', 'prompt-detail', prompt.message || 'Working…'));
+        break;
+      case 'unverified':
+        box.append(
+          text('div', 'prompt-question', `Do you want to switch to ${p.name} anyway?`),
+          text('div', 'prompt-detail', prompt.message),
+          actionRow([
+            button('Switch anyway', 'btn btn-primary', () => {
+              setPrompt(null);
+              vscode.postMessage({ type: 'connectAnyway', id: p.id });
+            }),
+            cancel(),
+          ]),
+        );
+        break;
+    }
+    return box;
+  }
+
+  function setPrompt(value) {
+    prompt = value;
+    renderList();
   }
 
   // ---- form
@@ -133,8 +254,7 @@
       field('orchestratorUrl', 'Orchestrator URL', 'url', 'https://cloud.uipath.com/acme/Production/orchestrator_',
         'Tenant URL including organization and tenant.'),
       field('clientId', 'Client ID', 'text', '', 'From the machine in Orchestrator (Tenant > Machines).'),
-      field('clientSecret', 'Client secret', 'password',
-        form.hasSecret ? 'Stored. Leave blank to keep it.' : '', ''),
+      field('clientSecret', 'Client secret', 'password', form.hasSecret ? 'Stored. Leave blank to keep it.' : '', ''),
     );
 
     const check = el('label', 'check');
@@ -149,7 +269,6 @@
       f.append(text('p', form.test.ok ? 'result result-ok' : 'result result-error', form.test.message));
     }
 
-    const buttons = el('div', 'form-buttons');
     const save = button('Save', 'btn btn-primary', null);
     save.type = 'submit';
     const test = button('Test', 'btn btn-secondary', () => {
@@ -160,8 +279,7 @@
     });
     const cancel = button('Cancel', 'btn btn-secondary', () => vscode.postMessage({ type: 'cancel' }));
     for (const b of [save, test, cancel]) b.disabled = form.busy;
-    buttons.append(save, test, cancel);
-    f.append(buttons);
+    f.append(actionRow([save, test, cancel], 'form-buttons'));
 
     f.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -228,6 +346,11 @@
     if (onClick) b.addEventListener('click', onClick);
     return b;
   }
+  function actionRow(buttons, className) {
+    const row = el('div', className || 'action-row');
+    row.append(...buttons);
+    return row;
+  }
   function iconButton(icon, label, onClick) {
     const b = el('button', 'icon-btn');
     b.type = 'button';
@@ -238,6 +361,7 @@
     return b;
   }
 
+  renderBanners();
   renderForm();
   renderList();
   vscode.postMessage({ type: 'ready' });

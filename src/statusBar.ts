@@ -15,8 +15,9 @@ export class TenantStatusBar {
 
   async refresh(): Promise<void> {
     if (this.switcher.isRunning) {
-      this.item.text = '$(sync~spin) Switching tenant…';
-      this.item.tooltip = 'A tenant switch is in progress';
+      const p = this.switcher.progress;
+      this.item.text = `$(sync~spin) Switching to ${p?.targetName ?? 'tenant'}…`;
+      this.item.tooltip = p?.step ? `Current step: ${p.step}` : 'A tenant switch is in progress';
       return;
     }
     let active: Preset | undefined;
