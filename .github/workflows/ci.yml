@@ -23,12 +23,12 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npx vsce package --no-dependencies --out orchestrator-connector-studio.vsix
+      - run: npx vsce package --no-dependencies --out sorenb-studio-tenant-switcher.vsix
 
       - uses: actions/upload-artifact@v7
         with:
           name: vsix
-          path: orchestrator-connector-studio.vsix
+          path: sorenb-studio-tenant-switcher.vsix
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -36,6 +36,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $name = "orchestrator-connector-studio-$($env:GITHUB_REF_NAME.TrimStart('v')).vsix"
-          Rename-Item orchestrator-connector-studio.vsix $name
+          $name = "sorenb-studio-tenant-switcher-$($env:GITHUB_REF_NAME.TrimStart('v')).vsix"
+          Rename-Item sorenb-studio-tenant-switcher.vsix $name
           gh release create $env:GITHUB_REF_NAME $name --title $env:GITHUB_REF_NAME --generate-notes

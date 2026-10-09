@@ -9,7 +9,7 @@ import { pickPreset, TenantStatusBar } from './statusBar';
 import { Switcher } from './switcher';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const log = vscode.window.createOutputChannel('Orchestrator Connector', { log: true });
+  const log = vscode.window.createOutputChannel('Tenant Switcher', { log: true });
   const store = new PresetStore(defaultPresetsPath(), path.join(context.globalStorageUri.fsPath, 'preset-meta.json'));
   const creds = new CredentialStore(path.join(context.extensionPath, 'scripts', 'credman.ps1'));
   const switcher = new Switcher(context, store, creds, log);
@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext): void {
     switcher,
     tree,
     statusBar,
-    vscode.window.registerTreeDataProvider('orchestratorConnector.presets', tree),
+    vscode.window.registerTreeDataProvider('tenantSwitcher.presets', tree),
     store.watch(refresh),
     switcher.onDidChange(refresh),
   );
@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await fn(arg);
       } catch (err) {
         log.error((err as Error).stack ?? String(err));
-        void vscode.window.showErrorMessage(`Orchestrator Connector: ${(err as Error).message}`);
+        void vscode.window.showErrorMessage(`Tenant Switcher: ${(err as Error).message}`);
       }
     };
 
@@ -67,10 +67,10 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('orchestratorConnector.addPreset', guard(addPreset)),
-    vscode.commands.registerCommand('orchestratorConnector.refresh', guard(async () => refresh())),
+    vscode.commands.registerCommand('tenantSwitcher.addPreset', guard(addPreset)),
+    vscode.commands.registerCommand('tenantSwitcher.refresh', guard(async () => refresh())),
     vscode.commands.registerCommand(
-      'orchestratorConnector.connect',
+      'tenantSwitcher.connect',
       guard(async (arg) => {
         const preset = await resolve(arg, 'Select the tenant to connect to');
         if (preset) {
@@ -79,7 +79,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     ),
     vscode.commands.registerCommand(
-      'orchestratorConnector.pickPreset',
+      'tenantSwitcher.pickPreset',
       guard(async () => {
         const preset = await resolve(undefined, 'Switch Orchestrator tenant');
         if (preset) {
@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     ),
     vscode.commands.registerCommand(
-      'orchestratorConnector.editPreset',
+      'tenantSwitcher.editPreset',
       guard(async (arg) => {
         const preset = await resolve(arg, 'Select the preset to edit');
         if (preset && (await editPresetForm(store, creds, preset))) {
@@ -97,7 +97,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     ),
     vscode.commands.registerCommand(
-      'orchestratorConnector.testPreset',
+      'tenantSwitcher.testPreset',
       guard(async (arg) => {
         const preset = await resolve(arg, 'Select the preset to test');
         if (preset) {
@@ -106,7 +106,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     ),
     vscode.commands.registerCommand(
-      'orchestratorConnector.deletePreset',
+      'tenantSwitcher.deletePreset',
       guard(async (arg) => {
         const preset = await resolve(arg, 'Select the preset to delete');
         if (!preset) {

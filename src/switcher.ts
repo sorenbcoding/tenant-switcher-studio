@@ -116,13 +116,13 @@ export class Switcher {
       void vscode.window.showWarningMessage('A tenant switch is already in progress.');
       return;
     }
-    const config = vscode.workspace.getConfiguration('orchestratorConnector');
+    const config = vscode.workspace.getConfiguration('tenantSwitcher');
 
     const uiRobot = findUiRobot(config.get<string>('uiRobotPath') || undefined);
     if (!uiRobot) {
       const open = 'Open Settings';
       if ((await vscode.window.showErrorMessage('UiRobot.exe was not found on this machine.', open)) === open) {
-        void vscode.commands.executeCommand('workbench.action.openSettings', 'orchestratorConnector.uiRobotPath');
+        void vscode.commands.executeCommand('workbench.action.openSettings', 'tenantSwitcher.uiRobotPath');
       }
       return;
     }

@@ -5,11 +5,11 @@ import { shortUrl } from './presetTree';
 import { Switcher } from './switcher';
 
 export class TenantStatusBar {
-  private readonly item = vscode.window.createStatusBarItem('orchestratorConnector.status', vscode.StatusBarAlignment.Left, 50);
+  private readonly item = vscode.window.createStatusBarItem('tenantSwitcher.status', vscode.StatusBarAlignment.Left, 50);
 
   constructor(private readonly switcher: Switcher) {
-    this.item.name = 'Orchestrator Tenant';
-    this.item.command = 'orchestratorConnector.pickPreset';
+    this.item.name = 'Tenant Switcher';
+    this.item.command = 'tenantSwitcher.pickPreset';
     this.item.show();
   }
 

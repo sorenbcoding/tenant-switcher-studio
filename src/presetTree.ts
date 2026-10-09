@@ -61,7 +61,7 @@ export class PresetTreeProvider implements vscode.TreeDataProvider<Row> {
     try {
       const presets = await this.store.load();
       const [active, meta] = await Promise.all([this.switcher.activePreset(presets), this.store.loadMeta()]);
-      const rows: Row[] = [new ActionItem('Add preset…', 'add', 'orchestratorConnector.addPreset')];
+      const rows: Row[] = [new ActionItem('Add preset…', 'add', 'tenantSwitcher.addPreset')];
       return rows.concat(
         presets
           .sort((a, b) => a.presetName.localeCompare(b.presetName))
