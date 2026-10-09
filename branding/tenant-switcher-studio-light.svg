@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Tenant Switcher for UiPath Studio">
+  <polygon points="32,4 60,32 32,60 4,32" fill="none" stroke="#5B3FCB" stroke-width="2.5" stroke-linejoin="miter"/>
+  <g transform="translate(32,32)" fill="none" stroke="#5B3FCB" stroke-width="2" stroke-linecap="square"><path d="M-8 -4H8M4 -8L8 -4L4 0"/><path d="M8 4H-8M-4 0L-8 4L-4 8"/></g>
+</svg>

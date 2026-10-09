@@ -14,6 +14,7 @@
   "bugs": {
     "url": "https://github.com/sorenbcoding/tenant-switcher-studio/issues"
   },
+  "icon": "branding/tenant-switcher-studio-light-128.png",
   "engines": {
     "vscode": "^1.95.0"
   },

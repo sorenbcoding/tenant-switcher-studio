@@ -3,6 +3,7 @@
 !scripts/switch.ps1
 !scripts/credman.ps1
 !media/**
+!branding/tenant-switcher-studio-light-128.png
 !package.json
 !README.md
 !CHANGELOG.md
