@@ -12,7 +12,7 @@ export class PresetItem extends vscode.TreeItem {
   ) {
     super(preset.presetName || '(unnamed)', vscode.TreeItemCollapsibleState.None);
     this.id = preset.id;
-    this.description = shortUrl(preset.orchestratorUrl) + (active ? ' · connected' : '');
+    // No description: Studio does not truncate labels, so extra text pushes the inline icons out of view.
     this.iconPath = active
       ? new vscode.ThemeIcon('pass-filled', new vscode.ThemeColor('testing.iconPassed'))
       : new vscode.ThemeIcon('cloud');
@@ -26,7 +26,20 @@ export class PresetItem extends vscode.TreeItem {
   }
 }
 
-export class PresetTreeProvider implements vscode.TreeDataProvider<PresetItem> {
+/** A clickable row, used because Studio does not render view title buttons. */
+export class ActionItem extends vscode.TreeItem {
+  constructor(label: string, icon: string, command: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.id = `action:${command}`;
+    this.iconPath = new vscode.ThemeIcon(icon);
+    this.contextValue = 'action';
+    this.command = { command, title: label };
+  }
+}
+
+type Row = PresetItem | ActionItem;
+
+export class PresetTreeProvider implements vscode.TreeDataProvider<Row> {
   private readonly emitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.emitter.event;
 
@@ -40,17 +53,20 @@ export class PresetTreeProvider implements vscode.TreeDataProvider<PresetItem> {
     this.emitter.fire();
   }
 
-  getTreeItem(item: PresetItem): vscode.TreeItem {
+  getTreeItem(item: Row): vscode.TreeItem {
     return item;
   }
 
-  async getChildren(): Promise<PresetItem[]> {
+  async getChildren(): Promise<Row[]> {
     try {
       const presets = await this.store.load();
       const [active, meta] = await Promise.all([this.switcher.activePreset(presets), this.store.loadMeta()]);
-      return presets
-        .sort((a, b) => a.presetName.localeCompare(b.presetName))
-        .map((p) => new PresetItem(p, p.id === active?.id, !!meta[p.id]?.syncUipCli));
+      const rows: Row[] = [new ActionItem('Add preset…', 'add', 'orchestratorConnector.addPreset')];
+      return rows.concat(
+        presets
+          .sort((a, b) => a.presetName.localeCompare(b.presetName))
+          .map((p) => new PresetItem(p, p.id === active?.id, !!meta[p.id]?.syncUipCli)),
+      );
     } catch (err) {
       this.log.error(`Could not load presets from ${this.store.presetsPath}: ${(err as Error).message}`);
       void vscode.window.showErrorMessage(`Could not load presets: ${(err as Error).message}`);
