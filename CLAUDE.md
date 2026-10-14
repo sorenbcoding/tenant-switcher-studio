@@ -13,6 +13,7 @@ UiPath Studio 26 extension (VS Code-compatible extension host, TypeScript, packa
 
 ## Constraints
 - **Do not rename the shared store.** Keep `%AppData%\OrchestratorConnector\presets.json` (bare array, PascalCase keys) and the Credential Manager target `OrchestratorConnector:<guid>`. They are shared with the Orchestrator Connector desktop app.
+- The connected tenant comes from Studio's live URL, else the Robot's `UiPath.settings` (`UiPathServerUrl`; `%AppData%\UiPath`, or `%ProgramData%\UiPath` in service mode), watched in `src/robotSettings.ts`. The desktop app reads the same file. Never write to it.
 - Studio ignores `view/title` buttons, does not truncate tree labels and asks every tree row for children. The UI is a webview view for that reason. Don't go back to a tree view.
 - Studio fills icon geometry instead of stroking it, so `media/icon.svg` must be built from filled shapes.
 - Webview: nonce CSP, no inline styles or scripts, user data only through `textContent`/`value`, and secrets never sent to the webview.
