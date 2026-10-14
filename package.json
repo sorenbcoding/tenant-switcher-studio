@@ -2,7 +2,7 @@
   "name": "sorenb-studio-tenant-switcher",
   "displayName": "Tenant Switcher for UiPath Studio",
   "description": "Switches the local Studio and Robot between Orchestrator tenants using saved presets with machine client credentials.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "sorenbcoding",
   "license": "MIT",
   "author": "Søren Schytz Birk",
