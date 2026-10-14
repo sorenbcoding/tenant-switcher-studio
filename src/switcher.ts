@@ -8,6 +8,7 @@ import { tenantParts, urlKey, validateCredentials } from './identity';
 import { Preset } from './model';
 import { PresetStore, writeAtomic } from './presetStore';
 import { findAssistant, findUiRobot, findUip } from './robotLocator';
+import { defaultRobotSettingsPaths, hasRobotService, readRobotServerUrl } from './robotSettings';
 import { getStudioOrchestratorUrl } from './studioConnection';
 
 const ACTIVE_KEY = 'activePresetId';
@@ -110,12 +111,20 @@ export class Switcher {
     this.changed.fire();
   }
 
-  /** The preset the Robot is connected to: Studio's live connection if readable, else the last one we connected. */
+  /**
+   * The preset the Robot is connected to. The URL comes from Studio's live connection, else the
+   * Robot's own UiPath.settings (shared with the desktop app, so switches made there show up),
+   * else the last preset this extension connected.
+   */
   async activePreset(presets?: Preset[]): Promise<Preset | undefined> {
     presets ??= await this.store.load();
-    const studioUrl = await getStudioOrchestratorUrl();
-    if (studioUrl) {
-      const key = urlKey(studioUrl);
+    const robotUrl =
+      (await getStudioOrchestratorUrl()) ?? readRobotServerUrl(defaultRobotSettingsPaths(), await hasRobotService());
+    if (robotUrl === '') {
+      return undefined; // the Robot is disconnected
+    }
+    if (robotUrl) {
+      const key = urlKey(robotUrl);
       const matches = presets.filter((p) => urlKey(p.orchestratorUrl) === key);
       if (matches.length === 1) {
         return matches[0];

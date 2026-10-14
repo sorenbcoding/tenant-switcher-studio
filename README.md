@@ -45,6 +45,8 @@ Confirmations appear on the preset card, for example *Do you want to switch tena
 
 The connected preset has a violet border and a green **Connected** label. Hover over a card to see the full URL and client ID.
 
+The connected preset comes from Studio's live connection, or else from the Robot's own `UiPath.settings`. The panel and status bar update live when that file changes, so a switch made in the desktop app shows up here too.
+
 ### What a switch does
 1. Checks the credentials: it requests a `client_credentials` token from the tenant's Identity Server. If the credentials are rejected, nothing changes.
 2. Closes UiPath Assistant and runs `UiRobot disconnect`.
@@ -70,6 +72,7 @@ Studio restarts its extension host when the tenant changes. Steps 2–6 therefor
 | Presets (name, URL, client ID) | `%AppData%\OrchestratorConnector\presets.json` |
 | Client secrets | Windows Credential Manager, target `OrchestratorConnector:<preset id>` |
 | uip sync option per preset | `preset-meta.json` in the extension's global storage |
+| Connected tenant (read only) | the Robot's `UiPath.settings`, key `UiPathServerUrl`: `%AppData%\UiPath` (user mode) or `%ProgramData%\UiPath` (service mode) |
 
 The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Orchestrator Connector](https://github.com/sorenbcoding/OrchestratorConnector) desktop app, so a preset created in one tool appears in the other.
 

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { CredentialStore } from './credentialStore';
 import { PresetPanel } from './presetPanel';
 import { defaultPresetsPath, PresetStore } from './presetStore';
+import { defaultRobotSettingsPaths, watchRobotSettings } from './robotSettings';
 import { pickPreset, TenantStatusBar } from './statusBar';
 import { SwitchResult, Switcher } from './switcher';
 
@@ -96,6 +97,8 @@ export function activate(context: vscode.ExtensionContext): void {
     statusBar,
     vscode.window.registerWebviewViewProvider(PresetPanel.viewId, panel, { webviewOptions: { retainContextWhenHidden: true } }),
     store.watch(refresh),
+    // The Robot's own settings change on every switch, including switches made in the desktop app.
+    watchRobotSettings(defaultRobotSettingsPaths(), refresh),
     switcher.onDidChange(refresh),
     switcher.onDidFinish((result) => void presentResult(result)),
     vscode.commands.registerCommand('tenantSwitcher.addPreset', guard(() => panel.openAddForm())),
