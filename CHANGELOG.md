@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 - When Studio's connection cannot be read, the connected preset comes from the Robot's own `UiPath.settings` (`UiPathServerUrl`) instead of the last switch made by the extension.
 - The panel and status bar update live when the Robot's connection changes, including switches made in the Tenant Switcher for UiPath desktop app.
+- The desktop app is referred to by its new name, *Tenant Switcher for UiPath* (formerly *Orchestrator Connector*), in the delete confirmation and the README.
 
 ## [0.3.0] - 2026-10-09
 

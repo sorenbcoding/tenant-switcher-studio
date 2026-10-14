@@ -201,7 +201,7 @@
       case 'delete':
         box.append(
           text('div', 'prompt-question', `Do you want to delete ${p.name}?`),
-          text('div', 'prompt-detail', 'The stored client secret is removed too. The Orchestrator Connector desktop app shares this preset.'),
+          text('div', 'prompt-detail', 'The stored client secret is removed too. The Tenant Switcher for UiPath desktop app shares this preset.'),
           actionRow([
             button('Delete', 'btn btn-primary', () => {
               setPrompt(null);

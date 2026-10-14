@@ -74,7 +74,7 @@ Studio restarts its extension host when the tenant changes. Steps 2–6 therefor
 | uip sync option per preset | `preset-meta.json` in the extension's global storage |
 | Connected tenant (read only) | the Robot's `UiPath.settings`, key `UiPathServerUrl`: `%AppData%\UiPath` (user mode) or `%ProgramData%\UiPath` (service mode) |
 
-The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Orchestrator Connector](https://github.com/sorenbcoding/OrchestratorConnector) desktop app, so a preset created in one tool appears in the other.
+The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Tenant Switcher for UiPath](https://github.com/sorenbcoding/tenant-switcher-app) desktop app (formerly *Orchestrator Connector*), so a preset created in one tool appears in the other.
 
 ### Security
 Secrets pass between the extension and its helper scripts over standard input, never on a command line. One exception: `UiRobot.exe` accepts the client secret only as a command-line argument. While `UiRobot connect` runs, any local process that can read other processes' command lines can see it.
