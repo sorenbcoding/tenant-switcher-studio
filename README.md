@@ -6,7 +6,9 @@
 <h1 align="center">Tenant Switcher for UiPath Studio</h1>
 <p align="center">By Søren Schytz Birk</p>
 
-Tenant Switcher switches the local UiPath Studio and Robot between Orchestrator tenants in one step. It uses saved presets, each with an Orchestrator URL, a machine client ID and a client secret.
+Tenant Switcher for UiPath Studio is a Studio extension that switches the local UiPath Robot and Assistant between Orchestrator tenants in one step. It uses saved presets, each with an Orchestrator URL, a machine client ID and a client secret. It was formerly called *Orchestrator Connector*.
+
+Its sibling, the Windows app [Tenant Switcher for UiPath](https://github.com/sorenbcoding/tenant-switcher-app), does the same outside Studio. The two share their presets and both show the tenant the Robot is actually connected to.
 
 ## Install
 
@@ -15,7 +17,7 @@ Tenant Switcher switches the local UiPath Studio and Robot between Orchestrator 
 - In Studio, open **Extensions → Custom** and select the file.
 - You also need a machine in Orchestrator that uses **client ID / client secret** credentials, either a machine template or a standard machine.
 
-Upgrading from *Orchestrator Connector* 0.1.0: uninstall it first. Your presets and secrets are kept.
+**Upgrading from *Orchestrator Connector* 0.1.0:** uninstall it first. Your presets and secrets are kept.
 
 ## Quick example
 
@@ -41,19 +43,21 @@ The **Tenant Switcher** panel in the activity bar lists your presets. Each prese
 | Test credentials | **Test** in the form. It requests a token with the values entered, without touching the Robot. |
 | Delete | the bin icon on a card. The stored secret is removed too. |
 
-Confirmations appear on the preset card, for example *Do you want to switch tenant to Staging?* with **Switch** and **Cancel**. Switch results appear as a banner at the top of the panel with **Show log** and **OK**. Studio titles every extension message box "Extension", so the panel is used wherever possible. Selecting a tenant from the status bar list counts as the confirmation.
+**Confirmations** appear on the preset card. For example, *Do you want to switch tenant to Staging?* comes with **Switch** and **Cancel**. Selecting a tenant from the status bar list counts as the confirmation.
 
-The connected preset has a violet border and a green **Connected** label. Hover over a card to see the full URL and client ID.
+**Switch results** appear as a banner at the top of the panel, with **Show log** and **OK**. Studio titles every extension message box "Extension", so the panel is used wherever possible.
 
-The connected preset comes from Studio's live connection, or else from the Robot's own `UiPath.settings`. The panel and status bar update live when that file changes, so a switch made in the desktop app shows up here too.
+**The connected preset** has a violet border and a green **Connected** label. Hover over a card to see its full URL and client ID.
+
+The connected preset is read from Studio's live connection, or else from the Robot's own `UiPath.settings`, so it is correct whichever tool made the switch. The panel and status bar update live when that file changes, so a switch made in the desktop app shows up here too.
 
 ### What a switch does
-1. Checks the credentials: it requests a `client_credentials` token from the tenant's Identity Server. If the credentials are rejected, nothing changes.
-2. Closes UiPath Assistant and runs `UiRobot disconnect`.
-3. Runs `UiRobot connect --url … --clientId … --clientSecret …` and checks the exit code. If the connect fails, the previously connected preset is reconnected.
-4. Restarts the `UiPath Robot` Windows service, but only if one exists (service-mode installs). This asks for elevation. Per-user installs skip this step.
-5. Starts UiPath Assistant again.
-6. Optionally, per preset, runs `uip login` with the same client credentials so the UiPath CLI targets the same tenant.
+1. **Checks the credentials.** The extension requests a `client_credentials` token from the tenant's Identity Server. If the credentials are rejected, nothing changes. If Identity Server cannot be reached, the card offers **Switch anyway**.
+2. **Disconnects.** Closes UiPath Assistant and runs `UiRobot disconnect`.
+3. **Connects.** Runs `UiRobot connect --url … --clientId … --clientSecret …` and checks the exit code. If the connect fails, the tenant the Robot was connected to before is reconnected.
+4. **Restarts the `UiPath Robot` Windows service**, but only if one exists (service-mode installs). Windows asks for elevation. Per-user installs skip this step.
+5. **Starts UiPath Assistant again.**
+6. **Signs in the uip CLI (optional, per preset).** Runs `uip login` with the same client credentials so the UiPath CLI targets the same tenant.
 
 Studio restarts its extension host when the tenant changes. Steps 2–6 therefore run in a separate PowerShell process, started through WMI, outside Studio's process tree. The extension reports the result once it is running again. Each step is logged in the **Tenant Switcher** output channel and in `switch.log` in the extension's global storage folder.
 
@@ -74,10 +78,12 @@ Studio restarts its extension host when the tenant changes. Steps 2–6 therefor
 | uip sync option per preset | `preset-meta.json` in the extension's global storage |
 | Connected tenant (read only) | the Robot's `UiPath.settings`, key `UiPathServerUrl`: `%AppData%\UiPath` (user mode) or `%ProgramData%\UiPath` (service mode) |
 
-The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Tenant Switcher for UiPath](https://github.com/sorenbcoding/tenant-switcher-app) desktop app (formerly *Orchestrator Connector*), so a preset created in one tool appears in the other.
+The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Tenant Switcher for UiPath](https://github.com/sorenbcoding/tenant-switcher-app) desktop app, so a preset created in one tool appears in the other. The list reloads when the file changes. The uip sync option is stored per tool.
 
 ### Security
-Secrets pass between the extension and its helper scripts over standard input, never on a command line. One exception: `UiRobot.exe` accepts the client secret only as a command-line argument. While `UiRobot connect` runs, any local process that can read other processes' command lines can see it.
+- Client secrets are stored only in Windows Credential Manager.
+- Secrets pass between the extension and its helper scripts over standard input, never on a command line.
+- **Exception:** `UiRobot.exe` accepts the client secret only as a command-line argument. While `UiRobot connect` runs, any local process that can read other processes' command lines can see it.
 
 ### Development
 ```powershell
