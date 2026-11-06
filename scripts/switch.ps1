@@ -10,6 +10,7 @@ param([Parameter(Mandatory = $true)][string]$Job)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'credman.ps1')
+. (Join-Path $PSScriptRoot 'assistantSettings.ps1')
 
 $spec = Get-Content -LiteralPath $Job -Raw -Encoding UTF8 | ConvertFrom-Json
 $secrets = New-Object System.Collections.Generic.List[string]
@@ -123,6 +124,25 @@ try {
       Add-Step 'Close Assistant' 'ok' "$($procs.Count) process(es) closed"
     } else {
       Add-Step 'Close Assistant' 'skipped' 'Assistant was not running'
+    }
+  }
+
+  # 1b. Turn off Assistant's Start menu shortcuts, if the user asked. Rewriting them for the new
+  #     tenant can freeze Windows Explorer. Assistant must be closed, or it may overwrite the file.
+  if ($spec.turnOffStartMenuShortcuts) {
+    $step = 'Turn off Start menu shortcuts'
+    if (@(Get-Process -Name 'UiPath.Assistant' -ErrorAction SilentlyContinue).Count -gt 0) {
+      Add-Step $step 'warning' 'Assistant is still running, so its settings were not changed. Turn off Show in Windows Start Menu in Assistant > Preferences.'
+    } else {
+      try {
+        switch (Disable-AssistantStartMenuShortcuts $spec.assistantSettingsPath) {
+          'changed' { Add-Step $step 'ok' "Show in Windows Start Menu is now off in $($spec.assistantSettingsPath)" }
+          'unchanged' { Add-Step $step 'skipped' 'Show in Windows Start Menu was already off' }
+          default { Add-Step $step 'skipped' "No Assistant settings file at $($spec.assistantSettingsPath)" }
+        }
+      } catch {
+        Add-Step $step 'warning' "Could not change Assistant's settings: $($_.Exception.Message) Turn off Show in Windows Start Menu in Assistant > Preferences."
+      }
     }
   }
 

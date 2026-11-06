@@ -14,7 +14,7 @@
   let state = { presets: [], busy: false, confirmBeforeSwitch: true };
   /** Add/edit form, or null. */
   let form = null;
-  /** Inline prompt on one card: {id, kind: 'confirm'|'delete'|'working'|'unverified', message?}. */
+  /** Inline prompt on one card: {id, kind: 'confirm'|'delete'|'working'|'unverified'|'startMenu', message?, canTurnOff?}. */
   let prompt = null;
   /** Transient message from the extension: {severity, message, openSettings?}. */
   let notice = null;
@@ -76,7 +76,7 @@
         }
         break;
       case 'prompt':
-        prompt = { id: msg.id, kind: msg.kind, message: msg.message };
+        prompt = { id: msg.id, kind: msg.kind, message: msg.message, canTurnOff: msg.canTurnOff };
         renderList();
         break;
       case 'clearPrompt':
@@ -227,6 +227,28 @@
           ]),
         );
         break;
+      case 'startMenu': {
+        const choose = (turnOff) => () => {
+          setPrompt({ id: p.id, kind: 'working', message: 'Starting the switch…' });
+          vscode.postMessage({ type: 'startMenuChoice', id: p.id, turnOff });
+        };
+        const buttons = prompt.canTurnOff
+          ? [button('Turn off and switch', 'btn btn-primary', choose(true)), button('Switch anyway', 'btn btn-secondary', choose(false))]
+          : [button('Switch anyway', 'btn btn-primary', choose(false))];
+        box.append(
+          text('div', 'prompt-question', 'Turn off Start menu shortcuts in UiPath Assistant?'),
+          text('div', 'prompt-detail', prompt.message),
+          text(
+            'div',
+            'prompt-detail',
+            prompt.canTurnOff
+              ? 'Turn off and switch sets Assistant > Preferences > Show in Windows Start Menu to off while Assistant is closed. Assistant then removes its shortcuts once. To stop this warning, turn off tenantSwitcher.warnAboutStartMenuShortcuts.'
+              : 'Turn off Show in Windows Start Menu in Assistant > Preferences. To stop this warning, turn off tenantSwitcher.warnAboutStartMenuShortcuts.',
+          ),
+          actionRow([...buttons, cancel()]),
+        );
+        break;
+      }
     }
     return box;
   }
