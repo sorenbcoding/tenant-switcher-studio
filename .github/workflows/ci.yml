@@ -5,15 +5,29 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  # Publishes an existing release to Open VSX again, e.g. one tagged before this step existed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish to Open VSX, e.g. v0.4.1
+        required: true
 
 permissions:
   contents: write
+  # Open VSX trusted publishing: the registry trusts this workflow file, so publishing
+  # needs no stored token. It trusts every run of this file, hence the release-only steps.
+  id-token: write
 
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      RELEASE: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
 
       - uses: actions/setup-node@v5
         with:
@@ -30,12 +44,24 @@ jobs:
           name: vsix
           path: sorenb-studio-tenant-switcher.vsix
 
+      - name: Name the release package
+        if: env.RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $env:TAG) { throw "Tag $env:TAG does not match the package.json version $version." }
+          $name = "sorenb-studio-tenant-switcher-$version.vsix"
+          Rename-Item sorenb-studio-tenant-switcher.vsix $name
+          "VSIX=$name" >> $env:GITHUB_ENV
+
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE == 'true' && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
-        run: |
-          $name = "sorenb-studio-tenant-switcher-$($env:GITHUB_REF_NAME.TrimStart('v')).vsix"
-          Rename-Item sorenb-studio-tenant-switcher.vsix $name
-          gh release create $env:GITHUB_REF_NAME $name --title $env:GITHUB_REF_NAME --generate-notes
+        run: gh release create $env:TAG $env:VSIX --title $env:TAG --generate-notes
+
+      - name: Publish to Open VSX
+        if: env.RELEASE == 'true'
+        shell: pwsh
+        run: npx --yes ovsx@1.3.0 publish $env:VSIX --trusted-publishing
