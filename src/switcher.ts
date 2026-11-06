@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { defaultAssistantSettingsPath, readShowStartMenuShortcuts } from './assistantSettings';
 import { CredentialStore } from './credentialStore';
 import { tenantParts, urlKey, validateCredentials } from './identity';
 import { Preset } from './model';
@@ -46,6 +47,19 @@ export type Preflight =
   | { kind: 'ready' }
   | { kind: 'blocked'; message: string; openSettings?: boolean }
   | { kind: 'unverified'; message: string };
+
+/** Assistant shows automations in the Start menu; canTurnOff when the switch closes Assistant, so the runner can change it safely. */
+export interface StartMenuWarning {
+  canTurnOff: boolean;
+}
+
+export const START_MENU_WARNING =
+  'UiPath Assistant shows your automations in the Windows Start menu. When it connects to another tenant it rewrites all those shortcuts, which can freeze Windows Explorer until it is restarted.';
+
+export interface StartOptions {
+  /** Set Assistant's "Show in Windows Start Menu" to off while Assistant is closed during the switch. */
+  turnOffStartMenuShortcuts?: boolean;
+}
 
 /** Outcome shown to the user; kept until dismissed so a restarted extension host can still show it. */
 export interface SwitchResult {
@@ -172,8 +186,20 @@ export class Switcher {
     return { kind: 'ready' };
   }
 
+  /** A warning when Assistant's Start menu shortcuts are on, unless the user has turned the warning off. */
+  startMenuWarning(): StartMenuWarning | undefined {
+    const config = vscode.workspace.getConfiguration('tenantSwitcher');
+    if (!config.get<boolean>('warnAboutStartMenuShortcuts', true)) {
+      return undefined;
+    }
+    if (readShowStartMenuShortcuts(defaultAssistantSettingsPath()) !== true) {
+      return undefined;
+    }
+    return { canTurnOff: config.get<boolean>('restartAssistant', true) };
+  }
+
   /** Starts the switch runner and follows it in the background. Results arrive through onDidFinish. */
-  async start(preset: Preset): Promise<void> {
+  async start(preset: Preset, options: StartOptions = {}): Promise<void> {
     const config = vscode.workspace.getConfiguration('tenantSwitcher');
     const uiRobot = findUiRobot(config.get<string>('uiRobotPath') || undefined);
     if (!uiRobot) {
@@ -198,11 +224,15 @@ export class Switcher {
     }
 
     const toJob = (p: Preset): JobPreset => ({ id: p.id, name: p.presetName, url: p.orchestratorUrl, clientId: p.clientId });
+    const restartAssistant = config.get<boolean>('restartAssistant', true);
     const job = {
       jobId: randomUUID(),
       uiRobotPath: uiRobot,
       assistantPath: findAssistant() ?? null,
-      restartAssistant: config.get<boolean>('restartAssistant', true),
+      restartAssistant,
+      // Only while the runner closes Assistant: the file must not be written under a running Assistant.
+      turnOffStartMenuShortcuts: restartAssistant && !!options.turnOffStartMenuShortcuts,
+      assistantSettingsPath: defaultAssistantSettingsPath() ?? null,
       target: toJob(preset),
       previous: previous ? toJob(previous) : null,
       uip: uip ?? null,

@@ -81,6 +81,11 @@
           "description": "Close UiPath Assistant before switching and start it again afterwards.",
           "scope": "machine"
         },
+        "tenantSwitcher.warnAboutStartMenuShortcuts": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Warn before switching when UiPath Assistant's *Show in Windows Start Menu* is on. Assistant then rewrites all its Start menu shortcuts for the new tenant, which can freeze Windows Explorer."
+        },
         "tenantSwitcher.confirmBeforeSwitch": {
           "type": "boolean",
           "default": true,

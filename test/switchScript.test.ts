@@ -52,7 +52,7 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
     fs.rmSync(dir, { recursive: true, force: true });
   }, 30_000);
 
-  async function run(t: typeof target, prev: typeof target | null) {
+  async function run(t: typeof target, prev: typeof target | null, extra: Record<string, unknown> = {}) {
     const name = randomUUID();
     const stubLog = path.join(dir, `${name}.calls`);
     const job = {
@@ -65,6 +65,7 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
       uip: null,
       statusPath: path.join(dir, `${name}.status.json`),
       logPath: path.join(dir, `${name}.log`),
+      ...extra,
     };
     const jobPath = path.join(dir, `${name}.job.json`);
     fs.writeFileSync(jobPath, JSON.stringify(job));
@@ -94,6 +95,25 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
     expect(calls.map((c) => c[0])).toEqual(['disconnect', 'connect', 'connect']);
     expect(calls[2]).toContain(previous.url);
     expect(status.message).toContain('Reconnected');
+  }, 60_000);
+
+  it('turns off Assistant Start menu shortcuts only while Assistant is not running', async () => {
+    const settingsPath = path.join(dir, 'agent-settings.json');
+    fs.writeFileSync(settingsPath, '{"agent":{"showStartMenuShortcuts":true,"zoomLevel":100}}');
+    const { status } = await run(target, previous, { turnOffStartMenuShortcuts: true, assistantSettingsPath: settingsPath });
+    const step = (status.steps as { name: string; outcome: string }[]).find((s) => s.name === 'Turn off Start menu shortcuts');
+    // The runner must not touch the file under a running Assistant, so the outcome depends on this machine.
+    const probe = path.join(dir, 'assistant-running.ps1');
+    fs.writeFileSync(probe, "Write-Output (@(Get-Process -Name 'UiPath.Assistant' -ErrorAction SilentlyContinue).Count -gt 0)");
+    const assistantRunning = (await runPowerShellFile(probe, [])).stdout.trim() === 'True';
+    expect(status.success).toBe(true);
+    if (assistantRunning) {
+      expect(step?.outcome).toBe('warning');
+      expect(fs.readFileSync(settingsPath, 'utf8')).toContain('"showStartMenuShortcuts":true');
+    } else {
+      expect(step?.outcome).toBe('ok');
+      expect(fs.readFileSync(settingsPath, 'utf8')).toBe('{"agent":{"showStartMenuShortcuts":false,"zoomLevel":100}}');
+    }
   }, 60_000);
 
   it('reports a disconnected robot when there is nothing to roll back to', async () => {
