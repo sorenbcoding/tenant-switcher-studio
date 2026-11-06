@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- Windows Explorer could stop responding after a switch when UiPath Assistant's *Show in Windows Start Menu* is on, because Assistant then rewrites all its Start menu shortcuts. A switch now warns about the setting first and offers **Turn off and switch**, which turns it off while Assistant is closed. The new setting `tenantSwitcher.warnAboutStartMenuShortcuts` turns the warning off. ([#1](https://github.com/sorenbcoding/tenant-switcher-studio/issues/1))
+
 ## [0.4.0] - 2026-10-14
 
 ### Changed

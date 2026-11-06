@@ -53,7 +53,7 @@ The connected preset is read from Studio's live connection, or else from the Rob
 
 ### What a switch does
 1. **Checks the credentials.** The extension requests a `client_credentials` token from the tenant's Identity Server. If the credentials are rejected, nothing changes. If Identity Server cannot be reached, the card offers **Switch anyway**.
-2. **Disconnects.** Closes UiPath Assistant and runs `UiRobot disconnect`.
+2. **Disconnects.** Closes UiPath Assistant and runs `UiRobot disconnect`. If you chose **Turn off and switch** (see [Troubleshooting](#troubleshooting)), Assistant's *Show in Windows Start Menu* is turned off while Assistant is closed.
 3. **Connects.** Runs `UiRobot connect --url … --clientId … --clientSecret …` and checks the exit code. If the connect fails, the tenant the Robot was connected to before is reconnected.
 4. **Restarts the `UiPath Robot` Windows service**, but only if one exists (service-mode installs). Windows asks for elevation. Per-user installs skip this step.
 5. **Starts UiPath Assistant again.**
@@ -68,6 +68,7 @@ Studio restarts its extension host when the tenant changes. Steps 2–6 therefor
 | `tenantSwitcher.restartAssistant` | `true` | Closes UiPath Assistant before the switch and starts it afterwards. |
 | `tenantSwitcher.validateBeforeSwitch` | `true` | Tests the credentials against Identity Server before disconnecting. |
 | `tenantSwitcher.confirmBeforeSwitch` | `true` | Asks for confirmation before switching. |
+| `tenantSwitcher.warnAboutStartMenuShortcuts` | `true` | Warns before switching when Assistant's *Show in Windows Start Menu* is on. See [Troubleshooting](#troubleshooting). |
 | `tenantSwitcher.uipCliPath` | `uip` | The `uip` command or its full path. |
 
 ### Storage
@@ -77,6 +78,7 @@ Studio restarts its extension host when the tenant changes. Steps 2–6 therefor
 | Client secrets | Windows Credential Manager, target `OrchestratorConnector:<preset id>` |
 | uip sync option per preset | `preset-meta.json` in the extension's global storage |
 | Connected tenant (read only) | the Robot's `UiPath.settings`, key `UiPathServerUrl`: `%AppData%\UiPath` (user mode) or `%ProgramData%\UiPath` (service mode) |
+| Assistant's Start menu setting | `%AppData%\UiPath\agent-settings.json`, key `agent.showStartMenuShortcuts`. Read before each switch; changed only when you choose **Turn off and switch**. |
 
 The preset and secret locations keep the `OrchestratorConnector` name on purpose. They are shared with the [Tenant Switcher for UiPath](https://github.com/sorenbcoding/tenant-switcher-app) desktop app, so a preset created in one tool appears in the other. The list reloads when the file changes. The uip sync option is stored per tool.
 
@@ -84,6 +86,14 @@ The preset and secret locations keep the `OrchestratorConnector` name on purpose
 - Client secrets are stored only in Windows Credential Manager.
 - Secrets pass between the extension and its helper scripts over standard input, never on a command line.
 - **Exception:** `UiRobot.exe` accepts the client secret only as a command-line argument. While `UiRobot connect` runs, any local process that can read other processes' command lines can see it.
+
+### Troubleshooting
+**Windows Explorer stops responding after a switch.** Win+E, Alt+Tab and taskbar clicks do nothing, and File Explorer windows don't open. This happens when UiPath Assistant's **Preferences → Show in Windows Start Menu** is on. Assistant keeps one Start menu shortcut per automation and rewrites them all when it connects to another tenant. With access to many folders that is hundreds of shortcuts, and Windows Explorer can stop handling input while it processes them.
+
+- **Fix:** turn off *Show in Windows Start Menu* in Assistant. When it is on, the panel warns before a switch and offers **Turn off and switch**, which changes that one setting while Assistant is closed. When `tenantSwitcher.restartAssistant` is off, change it in Assistant yourself.
+- **Once Explorer has frozen:** restart Windows Explorer from Task Manager.
+- Turning the setting off makes Assistant remove its shortcuts, which can freeze Explorer once more.
+- To keep the setting and stop the warning, turn off `tenantSwitcher.warnAboutStartMenuShortcuts`.
 
 ### Development
 ```powershell
