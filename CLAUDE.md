@@ -1,5 +1,6 @@
 # Tenant Switcher for UiPath Studio
 
+Owner: sorenbcoding
 Brand: sorenb-brand
 Brand category: extension (violet accent, ID pattern `SorenB.Studio.TenantSwitcher` → extension name `sorenb-studio-tenant-switcher`)
 
@@ -18,8 +19,8 @@ UiPath Studio 26 extension (VS Code-compatible extension host, TypeScript, packa
 - Studio fills icon geometry instead of stroking it, so `media/icon.svg` must be built from filled shapes.
 - Webview: nonce CSP, no inline styles or scripts, user data only through `textContent`/`value`, and secrets never sent to the webview.
 - Assistant's `%AppData%\UiPath\agent-settings.json` belongs to Assistant. Read it freely; only `switch.ps1` may change `agent.showStartMenuShortcuts` to `false`, while Assistant is closed and only when the user chose to. Never turn it back on: Assistant then rewrites all its Start menu shortcuts, which can freeze Windows Explorer.
-- Every change starts from a GitHub issue and goes on its own branch: `fix/<issue>-<slug>`, `feature/<issue>-<slug>`, `docs/…` or `release/v<version>`. End each commit subject with the issue key, e.g. `(#1)`. Commit small steps, then open a PR whose body says `Closes #<issue>`, merge it with a merge commit and delete the branch. Changes shared with the desktop app get an issue in both repos, cross-linked.
-- Tag `v*` only after the change has been tested in Studio; CI then publishes the release.
+- Changes follow the `sorenb-dev-cycle` skill. The sibling repo is the desktop app (github.com/sorenbcoding/tenant-switcher-app): changes that apply to both get an issue in each.
+- Releases: tag `v*` (annotated) on `main` only after the change has been tested in Studio. CI then tests, creates the GitHub release with the `.vsix` and publishes to Open VSX (trusted publishing, no token). To publish an existing tag to Open VSX again: Actions → CI → *Run workflow* with the tag.
 
 ## Commands
 `npm run typecheck`, `npm test`, `npm run build`, `npm run package`. Brand check: `python ~/.claude/skills/sorenb-brand/scripts/brand_check.py . --category extension`.
