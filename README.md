@@ -103,6 +103,8 @@ npm test           # vitest; Credential Manager and switch.ps1 end-to-end tests 
 npm run package    # create the .vsix
 ```
 
+**Releases:** pushing a `v*` tag that matches the `package.json` version makes CI test and package the extension, create the GitHub release with the `.vsix`, and publish it to [Open VSX](https://open-vsx.org/extension/sorenbcoding/sorenb-studio-tenant-switcher). Open VSX trusts `ci.yml` (trusted publishing), so no token is stored. To publish an existing tag to Open VSX again, run the CI workflow manually (*Run workflow*) with that tag.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
