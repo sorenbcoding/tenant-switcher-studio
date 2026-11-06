@@ -2,6 +2,7 @@
 !dist/extension.js
 !scripts/switch.ps1
 !scripts/credman.ps1
+!scripts/assistantSettings.ps1
 !media/**
 !branding/tenant-switcher-studio-light-128.png
 !package.json

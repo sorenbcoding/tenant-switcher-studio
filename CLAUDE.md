@@ -17,7 +17,9 @@ UiPath Studio 26 extension (VS Code-compatible extension host, TypeScript, packa
 - Studio ignores `view/title` buttons, does not truncate tree labels and asks every tree row for children. The UI is a webview view for that reason. Don't go back to a tree view.
 - Studio fills icon geometry instead of stroking it, so `media/icon.svg` must be built from filled shapes.
 - Webview: nonce CSP, no inline styles or scripts, user data only through `textContent`/`value`, and secrets never sent to the webview.
-- Commit small steps and push straight to `main`. Tag `v*` only after the change has been tested in Studio; CI then publishes the release.
+- Assistant's `%AppData%\UiPath\agent-settings.json` belongs to Assistant. Read it freely; only `switch.ps1` may change `agent.showStartMenuShortcuts` to `false`, while Assistant is closed and only when the user chose to. Never turn it back on: Assistant then rewrites all its Start menu shortcuts, which can freeze Windows Explorer.
+- Every change starts from a GitHub issue and goes on its own branch: `fix/<issue>-<slug>`, `feature/<issue>-<slug>`, `docs/…` or `release/v<version>`. End each commit subject with the issue key, e.g. `(#1)`. Commit small steps, then open a PR whose body says `Closes #<issue>`, merge it with a merge commit and delete the branch. Changes shared with the desktop app get an issue in both repos, cross-linked.
+- Tag `v*` only after the change has been tested in Studio; CI then publishes the release.
 
 ## Commands
 `npm run typecheck`, `npm test`, `npm run build`, `npm run package`. Brand check: `python ~/.claude/skills/sorenb-brand/scripts/brand_check.py . --category extension`.

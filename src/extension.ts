@@ -5,7 +5,7 @@ import { PresetPanel } from './presetPanel';
 import { defaultPresetsPath, PresetStore } from './presetStore';
 import { defaultRobotSettingsPaths, watchRobotSettings } from './robotSettings';
 import { pickPreset, TenantStatusBar } from './statusBar';
-import { SwitchResult, Switcher } from './switcher';
+import { START_MENU_WARNING, SwitchResult, Switcher } from './switcher';
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel('Tenant Switcher', { log: true });
@@ -74,7 +74,23 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
     }
-    await switcher.start(picked);
+    let turnOffStartMenuShortcuts = false;
+    const warning = switcher.startMenuWarning();
+    if (warning) {
+      const choice = await vscode.window.showQuickPick(
+        [
+          ...(warning.canTurnOff ? [{ label: 'Turn off Start menu shortcuts and switch', turnOff: true }] : []),
+          { label: `Switch to ${picked.presetName} anyway`, turnOff: false },
+          { label: 'Cancel', turnOff: undefined },
+        ],
+        { title: 'Turn off Start menu shortcuts in UiPath Assistant?', placeHolder: START_MENU_WARNING },
+      );
+      if (choice?.turnOff === undefined) {
+        return;
+      }
+      turnOffStartMenuShortcuts = choice.turnOff;
+    }
+    await switcher.start(picked, { turnOffStartMenuShortcuts });
   };
 
   const guard =
