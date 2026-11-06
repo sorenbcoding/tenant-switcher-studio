@@ -4,7 +4,7 @@ import { CredentialStore } from './credentialStore';
 import { shortUrl, tenantParts, validateCredentials } from './identity';
 import { PresetFormValues, validatePresetForm } from './presetForm';
 import { PresetStore } from './presetStore';
-import { Switcher } from './switcher';
+import { START_MENU_WARNING, Switcher } from './switcher';
 
 /** Messages from the webview (media/panel.js). */
 type Inbound =
@@ -16,6 +16,7 @@ type Inbound =
   | { type: 'test'; values: PresetFormValues }
   | { type: 'connect'; id: string }
   | { type: 'connectAnyway'; id: string }
+  | { type: 'startMenuChoice'; id: string; turnOff: boolean }
   | { type: 'delete'; id: string }
   | { type: 'dismissResult' }
   | { type: 'openSettings' }
@@ -130,10 +131,13 @@ export class PresetPanel implements vscode.WebviewViewProvider {
           await this.test(msg.values);
           break;
         case 'connect':
-          await this.connect(msg.id, false);
+          await this.connect(msg.id, {});
           break;
         case 'connectAnyway':
-          await this.connect(msg.id, true);
+          await this.connect(msg.id, { credentialsChecked: true });
+          break;
+        case 'startMenuChoice':
+          await this.connect(msg.id, { credentialsChecked: true, turnOffStartMenuShortcuts: msg.turnOff });
           break;
         case 'delete':
           await this.remove(msg.id);
@@ -241,14 +245,18 @@ export class PresetPanel implements vscode.WebviewViewProvider {
     return !!this.view?.visible;
   }
 
-  /** Connect flow inside the panel: the webview has already asked for confirmation. */
-  private async connect(id: string, skipChecks: boolean): Promise<void> {
+  /**
+   * Connect flow inside the panel: the webview has already asked for confirmation. Each card
+   * prompt answered (unverified credentials, Start menu shortcuts) comes back here with its answer.
+   * turnOffStartMenuShortcuts is undefined until the Start menu prompt has been answered.
+   */
+  private async connect(id: string, answers: { credentialsChecked?: boolean; turnOffStartMenuShortcuts?: boolean }): Promise<void> {
     const preset = await this.store.get(id);
     if (!preset) {
       await this.refresh();
       return;
     }
-    if (!skipChecks) {
+    if (!answers.credentialsChecked) {
       await this.post({ type: 'prompt', id, kind: 'working', message: 'Checking credentials…' });
       const check = await this.switcher.preflight(preset);
       if (check.kind === 'blocked') {
@@ -261,8 +269,15 @@ export class PresetPanel implements vscode.WebviewViewProvider {
         return;
       }
     }
+    if (answers.turnOffStartMenuShortcuts === undefined) {
+      const warning = this.switcher.startMenuWarning();
+      if (warning) {
+        await this.post({ type: 'prompt', id, kind: 'startMenu', message: START_MENU_WARNING, canTurnOff: warning.canTurnOff });
+        return;
+      }
+    }
     await this.post({ type: 'clearPrompt' });
-    await this.switcher.start(preset);
+    await this.switcher.start(preset, { turnOffStartMenuShortcuts: answers.turnOffStartMenuShortcuts });
   }
 
   /** The webview has already asked for confirmation. */
