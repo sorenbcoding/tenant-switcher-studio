@@ -11,11 +11,12 @@ import { PresetStore, writeAtomic } from './presetStore';
 import { findAssistant, findUiRobot, findUip } from './robotLocator';
 import { defaultRobotSettingsPaths, hasRobotService, readRobotServerUrl } from './robotSettings';
 import { getStudioOrchestratorUrl } from './studioConnection';
+import { RUN_TIMEOUT_MS, isActiveStatus } from './switchState';
 
 const ACTIVE_KEY = 'activePresetId';
 const RESULT_KEY = 'lastSwitchResult';
 const POLL_MS = 500;
-const RUN_TIMEOUT_MS = 5 * 60_000;
+const ALREADY_RUNNING = 'A tenant switch is already running. Wait for it to finish, then switch again.';
 
 interface JobPreset {
   id: string;
@@ -155,8 +156,8 @@ export class Switcher {
 
   /** Checks everything that can be checked before the Robot is touched. */
   async preflight(preset: Preset): Promise<Preflight> {
-    if (this.isRunning || (await this.readStatus())?.state === 'running') {
-      return { kind: 'blocked', message: 'A tenant switch is already running. Wait for it to finish, then switch again.' };
+    if (this.isRunning || (await this.runningStatus())) {
+      return { kind: 'blocked', message: ALREADY_RUNNING };
     }
     const config = vscode.workspace.getConfiguration('tenantSwitcher');
     if (!findUiRobot(config.get<string>('uiRobotPath') || undefined)) {
@@ -200,10 +201,22 @@ export class Switcher {
 
   /** Starts the switch runner and follows it in the background. Results arrive through onDidFinish. */
   async start(preset: Preset, options: StartOptions = {}): Promise<void> {
+    // Claim the switch before the first await, so a second start() (another card, the status
+    // bar) is refused instead of overwriting this one's job file.
+    if (this.current) {
+      this.log.warn(`Switch to "${preset.presetName}" refused: another switch is running.`);
+      return this.finish({ severity: 'error', targetName: preset.presetName, message: `The switch to "${preset.presetName}" was not started. ${ALREADY_RUNNING}` });
+    }
+    this.current = { targetName: preset.presetName };
+    this.changed.fire();
+    if (await this.runningStatus()) {
+      return this.abort({ severity: 'error', targetName: preset.presetName, message: `The switch to "${preset.presetName}" was not started. ${ALREADY_RUNNING}` });
+    }
+
     const config = vscode.workspace.getConfiguration('tenantSwitcher');
     const uiRobot = findUiRobot(config.get<string>('uiRobotPath') || undefined);
     if (!uiRobot) {
-      return this.finish({
+      return this.abort({
         severity: 'error',
         targetName: preset.presetName,
         message: 'UiRobot.exe was not found — no UiPath Robot install in the default locations. Set tenantSwitcher.uiRobotPath.',
@@ -250,7 +263,7 @@ export class Switcher {
       await this.launchRunner();
     } catch (err) {
       this.log.error(`Could not start the switch runner: ${(err as Error).message}`);
-      return this.finish({
+      return this.abort({
         severity: 'error',
         targetName: preset.presetName,
         message: `Could not start the tenant switch — ${(err as Error).message}. Check that PowerShell can run on this machine, then switch again.`,
@@ -267,11 +280,8 @@ export class Switcher {
     }
     if (status.state === 'done') {
       await this.report(status);
-    } else if (Date.now() - Date.parse(status.startedAt) < RUN_TIMEOUT_MS) {
+    } else if (await this.runningStatus()) {
       await this.followProgress(status.jobId, status.targetName);
-    } else {
-      this.log.warn(`Discarding stale switch status for job ${status.jobId}.`);
-      await fs.promises.rm(this.statusPath, { force: true });
     }
   }
 
@@ -299,6 +309,10 @@ export class Switcher {
         await new Promise((r) => setTimeout(r, POLL_MS));
       }
       this.current = undefined;
+      // The runner is gone or hangs; don't let its status file block the next switch.
+      if ((await this.readStatus())?.jobId === jobId) {
+        await fs.promises.rm(this.statusPath, { force: true });
+      }
       await this.finish({
         severity: 'error',
         targetName: name,
@@ -355,6 +369,25 @@ export class Switcher {
     await this.context.globalState.update(RESULT_KEY, result);
     this.changed.fire();
     this.finished.fire(result);
+  }
+
+  /** Ends a switch that never reached the runner: releases the claim taken in start(). */
+  private async abort(result: SwitchResult): Promise<void> {
+    this.current = undefined;
+    await this.finish(result);
+  }
+
+  /** The status of a switch that is still running, if any. A stale `running` file is removed. */
+  private async runningStatus(): Promise<SwitchStatus | undefined> {
+    const status = await this.readStatus();
+    if (isActiveStatus(status)) {
+      return status;
+    }
+    if (status?.state === 'running') {
+      this.log.warn(`Discarding stale switch status for job ${status.jobId} (started ${status.startedAt}).`);
+      await fs.promises.rm(this.statusPath, { force: true });
+    }
+    return undefined;
   }
 
   private async readStatus(): Promise<SwitchStatus | undefined> {
