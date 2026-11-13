@@ -102,6 +102,8 @@ export async function validateCredentials(
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
       body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: clientSecret }).toString(),
+      // A token endpoint never redirects; following one could land on a proxy's sign-in page.
+      redirect: 'manual',
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
@@ -110,8 +112,24 @@ export async function validateCredentials(
       message: `Could not reach ${endpoint} — ${(err as Error).message}. Check the network or proxy settings.`,
     };
   }
+  const noToken = (what: string): ValidationResult => ({
+    status: 'unknown',
+    message: `${endpoint} ${what} instead of issuing a token, so the credentials could not be checked. A proxy or sign-in page may be in the way.`,
+  });
   if (res.ok) {
-    return { status: 'ok' };
+    // Only an actual token proves the credentials; any 2xx page (proxy, captive portal) does not.
+    try {
+      const body = (await res.json()) as { access_token?: unknown } | null;
+      if (typeof body?.access_token === 'string' && body.access_token !== '') {
+        return { status: 'ok' };
+      }
+    } catch {
+      // not JSON
+    }
+    return noToken(`answered HTTP ${res.status}`);
+  }
+  if (res.status >= 300 && res.status < 400) {
+    return noToken(`redirected (HTTP ${res.status})`);
   }
   let error = '';
   let description = '';
