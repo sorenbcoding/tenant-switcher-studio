@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- A second switch could start while the first was still checking credentials, and the two then overwrote each other. **Connect** is now disabled during the check, and a second switch is refused. ([#8](https://github.com/sorenbcoding/tenant-switcher-studio/issues/8))
+- A switch whose runner stopped responding blocked every later switch until Studio was reloaded. After the 5-minute timeout, its status is now discarded. ([#8](https://github.com/sorenbcoding/tenant-switcher-studio/issues/8))
+
 ## [0.4.1] - 2026-11-06
 
 ### Fixed

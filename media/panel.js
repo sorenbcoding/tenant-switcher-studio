@@ -162,7 +162,8 @@
     const actions = el('div', 'card-actions');
     if (!p.active) {
       const connect = button('Connect', 'btn btn-secondary', () => onConnect(p));
-      connect.disabled = state.busy;
+      // Also while any card is checking credentials, so a second switch can't start meanwhile.
+      connect.disabled = state.busy || (prompt !== null && prompt.kind === 'working');
       actions.append(connect);
     }
     actions.append(
