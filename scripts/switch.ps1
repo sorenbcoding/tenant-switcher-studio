@@ -163,7 +163,16 @@ try {
   }
 
   # 2. Disconnect. A non-zero exit here usually means "already disconnected", so it is only a warning.
+  #    Except while a process runs: UiRobot then refuses and the Robot stays connected, so a connect
+  #    would only fail with "Orchestrator already connected!". Stop here and leave the Robot as it is.
   $r = Invoke-Exe $spec.uiRobotPath @('disconnect')
+  if ($r.code -ne 0 -and $r.output -match 'processes running') {
+    Add-Step 'Disconnect Robot' 'failed' "exit $($r.code) $($r.output)"
+    $status.rolledBack = $true  # the Robot never left its tenant
+    if ($assistantClosed -and $spec.assistantPath) { Start-Process -FilePath $spec.assistantPath -ErrorAction SilentlyContinue }
+    $current = if ($spec.previous) { "'$($spec.previous.name)'" } else { 'its current tenant' }
+    Finish $false "A process is running on the Robot, and UiRobot does not disconnect while a process runs, so the Robot is still connected to $current. Wait for the process to finish or stop it in UiPath Assistant, then switch again."
+  }
   Add-Step 'Disconnect Robot' $(if ($r.code -eq 0) { 'ok' } else { 'warning' }) "exit $($r.code) $($r.output)"
 
   # 3. Connect to the target tenant, rolling back to the previous one on failure. An exception
