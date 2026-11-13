@@ -96,8 +96,8 @@ function Get-Secret($preset) {
   return $s
 }
 
-function Connect-Robot($preset) {
-  $secret = Get-Secret $preset
+function Connect-Robot($preset, [string]$secret) {
+  if (-not $secret) { throw "No client secret is stored for preset '$($preset.name)'." }
   return Invoke-Exe $spec.uiRobotPath @('connect', '--url', $preset.url, '--clientId', $preset.clientId, '--clientSecret', $secret)
 }
 
@@ -111,9 +111,24 @@ function Finish([bool]$success, [string]$message) {
   exit 0
 }
 
+$assistantClosed = $false
+
 try {
   Write-Log "Switching to '$($spec.target.name)' ($($spec.target.url))"
   Save-Status
+
+  # 0. Read the secrets before anything changes: a missing target secret must not leave the Robot
+  #    disconnected. A missing previous secret only rules out the rollback.
+  try {
+    $targetSecret = Get-Secret $spec.target
+  } catch {
+    Add-Step 'Read client secret' 'failed' $_.Exception.Message
+    Finish $false "$($_.Exception.Message) The Robot was not changed."
+  }
+  $previousSecret = $null
+  if ($spec.previous) {
+    try { $previousSecret = Get-Secret $spec.previous } catch { Write-Log "No rollback possible: $($_.Exception.Message)" }
+  }
 
   # 1. Close Assistant so it reconnects cleanly afterwards.
   if ($spec.restartAssistant) {
@@ -121,6 +136,7 @@ try {
     if ($procs.Count -gt 0) {
       $procs | Stop-Process -Force -ErrorAction SilentlyContinue
       $procs | ForEach-Object { try { $_.WaitForExit(15000) | Out-Null } catch { } }
+      $assistantClosed = $true
       Add-Step 'Close Assistant' 'ok' "$($procs.Count) process(es) closed"
     } else {
       Add-Step 'Close Assistant' 'skipped' 'Assistant was not running'
@@ -150,17 +166,26 @@ try {
   $r = Invoke-Exe $spec.uiRobotPath @('disconnect')
   Add-Step 'Disconnect Robot' $(if ($r.code -eq 0) { 'ok' } else { 'warning' }) "exit $($r.code) $($r.output)"
 
-  # 3. Connect to the target tenant, rolling back to the previous one on failure.
-  $r = Connect-Robot $spec.target
+  # 3. Connect to the target tenant, rolling back to the previous one on failure. An exception
+  #    (UiRobot could not be started) counts as a failed connect, so it rolls back too.
+  try {
+    $r = Connect-Robot $spec.target $targetSecret
+    $reason = ''
+  } catch {
+    $r = @{ code = -1; output = $_.Exception.Message }
+    $reason = "UiRobot connect could not run ($($_.Exception.Message.TrimEnd('.')))."
+  }
   if ($r.code -eq 0) {
     Add-Step 'Connect Robot' 'ok' $spec.target.url
   } else {
     Add-Step 'Connect Robot' 'failed' "exit $($r.code) $($r.output)"
-    $output = if ($r.output) { $r.output.TrimEnd('.') } else { 'no output' }
-    $reason = "UiRobot connect returned exit code $($r.code) ($output)."
+    if (-not $reason) {
+      $output = if ($r.output) { $r.output.TrimEnd('.') } else { 'no output' }
+      $reason = "UiRobot connect returned exit code $($r.code) ($output)."
+    }
     if ($spec.previous) {
       try {
-        $rb = Connect-Robot $spec.previous
+        $rb = Connect-Robot $spec.previous $previousSecret
         if ($rb.code -eq 0) {
           $status.rolledBack = $true
           Add-Step "Reconnect previous ($($spec.previous.name))" 'ok' $spec.previous.url
@@ -214,11 +239,10 @@ try {
   # 6. Optionally point the uip CLI at the same tenant.
   if ($spec.uip) {
     try {
-      $secret = Get-Secret $spec.target
       $uipArgs = @('login', '--authority', $spec.uip.authority, '--client-id', $spec.target.clientId, '--client-secret', 'env.OC_UIP_CLIENT_SECRET', '--output', 'json')
       if ($spec.uip.organization) { $uipArgs += @('--organization', $spec.uip.organization) }
       if ($spec.uip.tenant) { $uipArgs += @('--tenant', $spec.uip.tenant) }
-      $r = Invoke-Exe $spec.uip.path $uipArgs 120 @{ OC_UIP_CLIENT_SECRET = $secret }
+      $r = Invoke-Exe $spec.uip.path $uipArgs 120 @{ OC_UIP_CLIENT_SECRET = $targetSecret }
       Add-Step 'Sync uip CLI login' $(if ($r.code -eq 0) { 'ok' } else { 'warning' }) "exit $($r.code) $($r.output)"
     } catch {
       Add-Step 'Sync uip CLI login' 'warning' $_.Exception.Message
@@ -228,5 +252,7 @@ try {
   Finish $true "Connected to '$($spec.target.name)'."
 } catch {
   Add-Step 'Unexpected error' 'failed' $_.Exception.Message
+  # Don't leave the user without Assistant because of an error after it was closed.
+  if ($assistantClosed -and $spec.assistantPath) { Start-Process -FilePath $spec.assistantPath -ErrorAction SilentlyContinue }
   Finish $false $_.Exception.Message
 }
