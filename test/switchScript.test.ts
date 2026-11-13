@@ -10,11 +10,16 @@ const scripts = path.join(__dirname, '..', 'scripts');
 const creds = new CredentialStore(path.join(scripts, 'credman.ps1'));
 
 // Compiles a fake UiRobot.exe that records its argv and fails `connect` to https://fail.example.
+// With OC_STUB_VANISH=1 it renames its own exe on `disconnect`, so the next call cannot start it.
 const STUB_SOURCE = `
 using System; using System.IO;
 public static class Program {
   public static int Main(string[] args) {
     File.AppendAllText(Environment.GetEnvironmentVariable("OC_STUB_LOG"), string.Join("\\u001f", args) + "\\n");
+    if (args[0] == "disconnect" && Environment.GetEnvironmentVariable("OC_STUB_VANISH") == "1") {
+      var me = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+      File.Move(me, me + ".gone");
+    }
     if (args.Length > 2 && args[0] == "connect" && args[2] == "https://fail.example") { Console.Error.WriteLine("connect failed"); return 1; }
     return 0;
   }
@@ -73,7 +78,7 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
     const r = await runPowerShellFile(path.join(scripts, 'switch.ps1'), ['-Job', jobPath], undefined, 60_000);
     expect(r.code, r.stderr + r.stdout).toBe(0);
     const status = JSON.parse(fs.readFileSync(job.statusPath, 'utf8').replace(/^\uFEFF/, ''));
-    const calls = fs.readFileSync(stubLog, 'utf8').trim().split('\n').map((l) => l.split('\u001f'));
+    const calls = fs.existsSync(stubLog) ? fs.readFileSync(stubLog, 'utf8').trim().split('\n').map((l) => l.split('\u001f')) : [];
     const log = fs.readFileSync(job.logPath, 'utf8');
     return { status, calls, log };
   }
@@ -113,6 +118,33 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
     } else {
       expect(step?.outcome).toBe('ok');
       expect(fs.readFileSync(settingsPath, 'utf8')).toBe('{"agent":{"showStartMenuShortcuts":false,"zoomLevel":100}}');
+    }
+  }, 60_000);
+
+  it('fails before touching the Robot when the target secret is missing', async () => {
+    const noSecret = { id: randomUUID(), name: 'No secret', url: 'https://cloud.uipath.com/acme/t2/orchestrator_', clientId: 'x' };
+    const { status, calls } = await run(noSecret, previous);
+    expect(status.success).toBe(false);
+    expect(calls).toEqual([]);
+    expect(status.message).toContain('No client secret is stored');
+    expect(status.message).toContain('not changed');
+  }, 60_000);
+
+  it('takes the rollback path when UiRobot cannot be started for connect', async () => {
+    const vanishing = path.join(dir, 'vanish', 'UiRobot.exe');
+    fs.mkdirSync(path.dirname(vanishing), { recursive: true });
+    fs.copyFileSync(stub, vanishing);
+    process.env.OC_STUB_VANISH = '1';
+    try {
+      const { status, calls } = await run(target, previous, { uiRobotPath: vanishing });
+      const steps = status.steps as { name: string; outcome: string }[];
+      expect(calls.map((c) => c[0])).toEqual(['disconnect']);
+      expect(status.success).toBe(false);
+      expect(status.message).toContain('could not run');
+      // The rollback was attempted (and fails too, since the exe is gone).
+      expect(steps.find((s) => s.name === 'Reconnect previous (Previous)')?.outcome).toBe('failed');
+    } finally {
+      delete process.env.OC_STUB_VANISH;
     }
   }, 60_000);
 
