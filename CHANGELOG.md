@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - A second switch could start while the first was still checking credentials, and the two then overwrote each other. **Connect** is now disabled during the check, and a second switch is refused. ([#8](https://github.com/sorenbcoding/tenant-switcher-studio/issues/8))
 - A switch whose runner stopped responding blocked every later switch until Studio was reloaded. After the 5-minute timeout, its status is now discarded. ([#8](https://github.com/sorenbcoding/tenant-switcher-studio/issues/8))
 - When connecting failed with an error instead of an exit code, for example because UiRobot couldn't be started, the switch skipped the rollback and left the Robot disconnected and Assistant closed. Such errors now roll back to the previous tenant like a failed connect. A missing client secret is now found before the Robot is disconnected. ([#9](https://github.com/sorenbcoding/tenant-switcher-studio/issues/9))
+- The credential check accepted any successful response, so a proxy or sign-in page could pass as valid credentials. It now requires an access token and doesn't follow redirects. Otherwise the card offers **Switch anyway**, as for an unreachable Identity Server. ([#10](https://github.com/sorenbcoding/tenant-switcher-studio/issues/10))
 
 ## [0.4.1] - 2026-11-06
 
