@@ -11,6 +11,7 @@ const creds = new CredentialStore(path.join(scripts, 'credman.ps1'));
 
 // Compiles a fake UiRobot.exe that records its argv and fails `connect` to https://fail.example.
 // With OC_STUB_VANISH=1 it renames its own exe on `disconnect`, so the next call cannot start it.
+// With OC_STUB_BUSY=1 `disconnect` fails the way UiRobot does while a process runs.
 const STUB_SOURCE = `
 using System; using System.IO;
 public static class Program {
@@ -19,6 +20,10 @@ public static class Program {
     if (args[0] == "disconnect" && Environment.GetEnvironmentVariable("OC_STUB_VANISH") == "1") {
       var me = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
       File.Move(me, me + ".gone");
+    }
+    if (args[0] == "disconnect" && Environment.GetEnvironmentVariable("OC_STUB_BUSY") == "1") {
+      Console.Error.WriteLine("RemoteException wrapping System.InvalidOperationException: Cannot perform action while there are any processes running on any of the Robots configured.");
+      return -1;
     }
     if (args.Length > 2 && args[0] == "connect" && args[2] == "https://fail.example") { Console.Error.WriteLine("connect failed"); return 1; }
     return 0;
@@ -145,6 +150,23 @@ describe.runIf(process.platform === 'win32')('switch.ps1 with a stub UiRobot', (
       expect(steps.find((s) => s.name === 'Reconnect previous (Previous)')?.outcome).toBe('failed');
     } finally {
       delete process.env.OC_STUB_VANISH;
+    }
+  }, 60_000);
+
+  it('stops without connecting when a process is running on the Robot', async () => {
+    process.env.OC_STUB_BUSY = '1';
+    try {
+      const { status, calls } = await run(target, previous);
+      const steps = status.steps as { name: string; outcome: string }[];
+      expect(calls.map((c) => c[0])).toEqual(['disconnect']);
+      expect(status.success).toBe(false);
+      expect(status.rolledBack).toBe(true);
+      expect(steps.find((s) => s.name === 'Disconnect Robot')?.outcome).toBe('failed');
+      expect(status.message).toContain("A process is running on the Robot");
+      expect(status.message).toContain("still connected to 'Previous'");
+      expect(status.message).not.toContain('client ID');
+    } finally {
+      delete process.env.OC_STUB_BUSY;
     }
   }, 60_000);
 
