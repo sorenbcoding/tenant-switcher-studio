@@ -73,4 +73,25 @@ describe('validateCredentials', () => {
     expect((await validateCredentials(url, 'id', 's', respond(400, { error: 'invalid_scope' }))).status).toBe('unknown');
     expect((await validateCredentials(url, 'id', 's', respond(503))).status).toBe('unknown');
   });
+
+  it('accepts a success response only when it carries an access token', async () => {
+    const html = (async () => new Response('<html>Sign in</html>', { status: 200 })) as unknown as typeof fetch;
+    for (const fake of [html, respond(200, {}), respond(200, { access_token: '' }), respond(200, null), respond(204)]) {
+      const result = await validateCredentials(url, 'id', 's', fake);
+      expect(result.status).toBe('unknown');
+      expect(result.status === 'unknown' && result.message).toContain('proxy or sign-in page');
+    }
+  });
+
+  it('does not follow redirects and reports them as unverified', async () => {
+    let redirect: RequestInit['redirect'];
+    const fake = (async (_u: string, init: RequestInit) => {
+      redirect = init.redirect;
+      return new Response(null, { status: 302, headers: { Location: 'https://proxy.example/login' } });
+    }) as unknown as typeof fetch;
+    const result = await validateCredentials(url, 'id', 's', fake);
+    expect(redirect).toBe('manual');
+    expect(result.status).toBe('unknown');
+    expect(result.status === 'unknown' && result.message).toContain('redirected (HTTP 302)');
+  });
 });
